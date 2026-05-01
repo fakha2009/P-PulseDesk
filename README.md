@@ -1,36 +1,86 @@
-# PulseDesk
+# ⚡ PulseDesk
 
-PulseDesk is a production-ready personal productivity system: tasks, habits, sleep tracking, authentication, admin analytics, PostgreSQL storage, and a polished responsive frontend in one deployable app.
+<div align="center">
 
-It is not a toy localStorage demo. The backend is a real Go API backed by Supabase PostgreSQL through `database/sql` and `github.com/jackc/pgx/v5/stdlib`, with JWT auth, bcrypt passwords, role-based access control, migrations, seed data, CORS, health checks, and Vercel deployment support.
+### Production-ready productivity platform
 
-Production: `https://web-three-steel-59.vercel.app`
+**Tasks · Habits · Sleep Tracking · Admin Analytics · PostgreSQL · Go API**
 
-## What Makes It Solid
+<br />
 
-- Real backend: Go 1.25, Gin, `database/sql`, pgx PostgreSQL driver.
-- Real database: Supabase PostgreSQL via `DATABASE_URL`, no Supabase SDK lock-in.
-- Secure auth: bcrypt password hashing, JWT sessions, `/api/auth/me`, role-aware middleware.
-- Admin controls: protected admin API, project stats, user table, role management.
-- Full productivity workflow: tasks, habits, sleep settings, sleep logs, stats, and dashboard summaries.
-- Vercel-ready: static frontend plus Go serverless API route through `api/index.go`.
-- Deployment hygiene: no database password, service role key, JWT secret, or Supabase secret in frontend code.
-- Idempotent database bootstrap: migrations and seed can run repeatedly without duplicating core demo users.
+![Go](https://img.shields.io/badge/Go-1.25-00ADD8?style=for-the-badge&logo=go&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Gin](https://img.shields.io/badge/Gin-HTTP_Framework-00ADD8?style=for-the-badge)
+![JWT](https://img.shields.io/badge/Auth-JWT-black?style=for-the-badge&logo=jsonwebtokens)
+![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?style=for-the-badge&logo=vercel)
 
-## Feature Tour
+<br />
 
-### Authentication
+**PulseDesk** is a complete personal productivity system with real backend architecture, PostgreSQL persistence, secure authentication, admin analytics, and a responsive frontend.
 
-PulseDesk has a complete auth flow:
+<br />
 
-- Register
-- Login
-- Logout
-- Current user endpoint
-- Profile update
-- Password change
-- JWT-protected routes
-- Admin-only routes
+🌐 **Live Production**
+
+https://web-three-steel-59.vercel.app
+
+</div>
+
+---
+
+## 🚀 Overview
+
+**PulseDesk** is not a localStorage demo and not a fake portfolio CRUD app.
+
+It is a deployable full-stack productivity platform built around a real Go backend, PostgreSQL database, JWT authentication, role-based access control, database migrations, seeded demo data, health checks, and Vercel-ready serverless routing.
+
+The application includes:
+
+| Module | Description |
+|---|---|
+| ✅ Tasks | Create, edit, delete, search, filter, prioritize, and complete tasks |
+| 🔁 Habits | Track daily habits, streaks, weekly rate, monthly rate, and dashboard previews |
+| 😴 Sleep | Configure sleep goals, log sleep, calculate duration, quality, and weekly statistics |
+| 🔐 Authentication | Register, login, JWT sessions, password hashing, profile update, password change |
+| 🛡️ Admin Panel | Protected admin API, system stats, user table, role management |
+| 🗄️ Database | Supabase PostgreSQL using `database/sql` with the `pgx` driver |
+| ☁️ Deployment | Static frontend plus Go serverless API on Vercel |
+
+---
+
+## ✨ Why PulseDesk Is Solid
+
+| Feature | Implementation |
+|---|---|
+| ⚙️ Real backend | Go 1.25, Gin, `database/sql`, `pgx` PostgreSQL driver |
+| 🗄️ Real database | Supabase PostgreSQL through `DATABASE_URL`, no Supabase SDK lock-in |
+| 🔐 Secure auth | bcrypt password hashes, JWT sessions, protected routes |
+| 🧑‍💼 Role-based access | User/admin roles with middleware-level protection |
+| 📊 Admin analytics | Real PostgreSQL-backed project metrics |
+| 🔁 Idempotent seed | Migrations and seed can run repeatedly without duplicate demo users |
+| ☁️ Vercel-ready | Static frontend with serverless Go API via `api/index.go` |
+| 🧱 Clean architecture | Handlers, services, repositories, middleware, models, utils |
+| 🔒 Secret-safe frontend | No database password, JWT secret, Supabase service role key, or backend secret exposed |
+
+---
+
+## 🧠 Core Features
+
+### 🔐 Authentication
+
+PulseDesk includes a complete authentication flow:
+
+| Capability | Status |
+|---|---:|
+| User registration | ✅ |
+| Login | ✅ |
+| Logout | ✅ |
+| Current user endpoint | ✅ |
+| Profile update | ✅ |
+| Password change | ✅ |
+| JWT protected routes | ✅ |
+| Admin-only routes | ✅ |
+| bcrypt password hashing | ✅ |
 
 `GET /api/auth/me` returns only safe user fields:
 
@@ -44,65 +94,97 @@ PulseDesk has a complete auth flow:
 }
 ```
 
-`password_hash` never leaves the backend.
+> `password_hash` never leaves the backend.
 
-### Tasks
+---
 
-The task module is built for day-to-day use:
+### ✅ Tasks
 
-- Create, edit, delete tasks
-- Toggle completion
-- Filter by active, completed, today, overdue
-- Search by title and description
-- Priority levels: low, medium, high
-- Due dates
-- Dashboard cards and counters
+The task module is designed for daily productivity usage.
 
-### Habits
+| Feature | Description |
+|---|---|
+| Create tasks | Add new tasks with title, description, priority, and due date |
+| Edit tasks | Update task content and metadata |
+| Delete tasks | Remove tasks safely |
+| Toggle completion | Mark tasks as complete or active |
+| Filters | Active, completed, today, overdue |
+| Search | Search by title and description |
+| Priority levels | Low, medium, high |
+| Dashboard cards | Counters and quick task insights |
 
-Habits include more than simple CRUD:
+---
 
-- Create, edit, delete habits
-- Daily check/uncheck
-- Color tagging
-- Current streak
-- Weekly rate
-- Monthly rate
-- Dashboard preview
+### 🔁 Habits
 
-### Sleep Tracking
+Habit tracking is more than basic CRUD.
 
-PulseDesk tracks sleep as a first-class productivity signal:
+| Feature | Description |
+|---|---|
+| Create habits | Add personal habits |
+| Edit habits | Update habit names and settings |
+| Delete habits | Remove habits |
+| Daily check-in | Mark or unmark habit completion |
+| Color coding | Visual habit separation |
+| Current streak | Track ongoing consistency |
+| Weekly rate | Analyze weekly performance |
+| Monthly rate | Analyze monthly consistency |
+| Dashboard preview | Show habit progress on the main page |
 
-- Target bedtime
-- Target wake time
-- Sleep logs
-- Duration calculation
-- Sleep quality: poor, normal, great
-- Weekly sleep stats
-- Best/worst day
-- Recommendations based on sleep consistency
+---
 
-### Admin Panel
+### 😴 Sleep Tracking
 
-Admin users can see real PostgreSQL-backed system metrics:
+Sleep is treated as a first-class productivity metric.
 
-- Total users
-- New users today
-- Total tasks
-- Completed tasks
-- Total habits
-- Total sleep logs
-- Activity over the last 7 days
-- User summaries with task, habit, and sleep counts
+| Feature | Description |
+|---|---|
+| Target bedtime | Configure preferred sleep time |
+| Target wake time | Configure wake-up goal |
+| Sleep logs | Store daily sleep records |
+| Duration calculation | Automatically calculate sleep length |
+| Sleep quality | Poor, normal, great |
+| Weekly stats | Analyze sleep over the week |
+| Best/worst day | Highlight sleep extremes |
+| Recommendations | Suggestions based on sleep regularity |
 
-Normal users receive `403` on `/api/admin/*`.
+---
 
-## Architecture
+### 🛡️ Admin Panel
+
+Admins can access PostgreSQL-backed system metrics.
+
+| Metric | Description |
+|---|---|
+| Total users | Full user count |
+| New users today | Daily growth |
+| Total tasks | All created tasks |
+| Completed tasks | Finished task count |
+| Total habits | All created habits |
+| Sleep logs | Full sleep record count |
+| 7-day activity | Recent activity overview |
+| User summary | Tasks, habits, and sleep logs per user |
+
+Regular users receive:
+
+```http
+403 Forbidden
+```
+
+on protected admin endpoints:
+
+```text
+/api/admin/*
+```
+
+---
+
+## 🏗️ Architecture
 
 ```text
 api/index.go            Vercel Go Function entrypoint
 cmd/app/main.go         Long-running local/server entrypoint
+
 app/config              Environment loading and validation
 app/database            PostgreSQL connection, migrations, seed
 app/server              Gin router, CORS, API wiring
@@ -112,39 +194,50 @@ app/repository          SQL repository layer
 app/service             Business logic
 app/models              Request/response/domain models
 app/utils               JWT, password hashing, validators
+
 web/                    Static frontend
 ```
 
-The same backend logic is shared by:
+The same backend logic is used in both modes:
 
-- local/server mode: `go run ./cmd/app`
-- Vercel serverless mode: `api/index.go`
+| Mode | Entrypoint |
+|---|---|
+| Local/server mode | `go run ./cmd/app` |
+| Vercel serverless mode | `api/index.go` |
 
-## Database
+---
+
+## 🗄️ Database
 
 PulseDesk uses PostgreSQL tables for:
 
-- `users`
-- `tasks`
-- `habits`
-- `habit_checks`
-- `sleep_settings`
-- `sleep_logs`
+| Table | Purpose |
+|---|---|
+| `users` | Accounts, roles, password hashes |
+| `tasks` | User tasks |
+| `habits` | User habits |
+| `habit_checks` | Daily habit completion records |
+| `sleep_settings` | User sleep goals |
+| `sleep_logs` | Sleep tracking records |
 
-PostgreSQL-specific choices:
+PostgreSQL-specific implementation details:
 
-- `BIGSERIAL` primary keys
-- `TIMESTAMPTZ` timestamps
-- `TEXT CHECK (...)` instead of MySQL enum
-- `ON CONFLICT` upserts
-- `INSERT ... RETURNING id`
-- `CREATE INDEX IF NOT EXISTS`
+| Feature | Usage |
+|---|---|
+| `BIGSERIAL` | Primary keys |
+| `TIMESTAMPTZ` | Time-aware timestamps |
+| `TEXT CHECK (...)` | Lightweight enum-like constraints |
+| `ON CONFLICT` | Safe idempotent inserts |
+| `INSERT ... RETURNING id` | Clean insert flow |
+| `CREATE INDEX IF NOT EXISTS` | Repeatable migrations |
 
-Supabase pooler compatibility is handled by adding pgx simple protocol mode to `DATABASE_URL` when needed.
+Supabase pooler compatibility is handled through pgx simple protocol mode when needed.
 
-## Environment
+---
 
-Production backend:
+## ⚙️ Environment
+
+### Production Backend
 
 ```env
 APP_ENV=production
@@ -154,13 +247,16 @@ JWT_SECRET=change_this_secret_key_please_use_a_strong_random_string
 CORS_ORIGIN=https://your-vercel-domain.vercel.app
 ```
 
-Local fallback when `DATABASE_URL` is not set:
+### Local Fallback
+
+If `DATABASE_URL` is not provided, local `DB_*` settings are used:
 
 ```env
 APP_ENV=local
 APP_PORT=8082
 JWT_SECRET=change_this_secret_key_please_use_a_strong_random_string
 CORS_ORIGIN=
+
 DB_HOST=localhost
 DB_PORT=5432
 DB_DATABASE=pulsedesk
@@ -168,13 +264,27 @@ DB_USERNAME=postgres
 DB_PASSWORD=
 ```
 
-Rules:
+### Environment Rules
 
-- If `DATABASE_URL` exists, `DB_*` is ignored.
-- `JWT_SECRET` must be at least 32 characters.
-- Never expose `DATABASE_URL`, `POSTGRES_PASSWORD`, `SUPABASE_SERVICE_ROLE_KEY`, or `JWT_SECRET` in frontend env.
+| Rule | Behavior |
+|---|---|
+| `DATABASE_URL` exists | `DB_*` variables are ignored |
+| `JWT_SECRET` length | Must be at least 32 characters |
+| Frontend secrets | Never expose backend secrets to frontend |
+| Production CORS | Should match the deployed frontend origin |
 
-## Local Development
+Never expose these values in frontend code:
+
+```text
+DATABASE_URL
+POSTGRES_PASSWORD
+SUPABASE_SERVICE_ROLE_KEY
+JWT_SECRET
+```
+
+---
+
+## 🧪 Local Development
 
 ```bash
 cp .env.example .env
@@ -188,71 +298,89 @@ Open:
 http://localhost:8082
 ```
 
-## Seed Accounts
+---
 
-The seed is idempotent and stores passwords as bcrypt hashes.
+## 👤 Seed Accounts
 
-- Admin: `admin@pulsedesk.local` / `admin12345`
-- Demo user: `demo@example.com` / `password123`
+Seed data is idempotent and stores passwords as bcrypt hashes.
 
-## API Overview
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@pulsedesk.local` | `admin12345` |
+| Demo User | `demo@example.com` | `password123` |
 
-Auth:
+---
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `PUT /api/auth/me`
-- `PUT /api/auth/password`
-- `POST /api/auth/logout`
+## 📡 API Overview
 
-Tasks:
+### Auth
 
-- `GET /api/tasks`
-- `POST /api/tasks`
-- `GET /api/tasks/:id`
-- `PUT /api/tasks/:id`
-- `DELETE /api/tasks/:id`
-- `PATCH /api/tasks/:id/toggle`
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register new user |
+| `POST` | `/api/auth/login` | Login |
+| `GET` | `/api/auth/me` | Get current user |
+| `PUT` | `/api/auth/me` | Update profile |
+| `PUT` | `/api/auth/password` | Change password |
+| `POST` | `/api/auth/logout` | Logout |
 
-Habits:
+### Tasks
 
-- `GET /api/habits`
-- `POST /api/habits`
-- `GET /api/habits/:id`
-- `PUT /api/habits/:id`
-- `DELETE /api/habits/:id`
-- `PATCH /api/habits/:id/check`
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/tasks` | List tasks |
+| `POST` | `/api/tasks` | Create task |
+| `GET` | `/api/tasks/:id` | Get task |
+| `PUT` | `/api/tasks/:id` | Update task |
+| `DELETE` | `/api/tasks/:id` | Delete task |
+| `PATCH` | `/api/tasks/:id/toggle` | Toggle completion |
 
-Sleep:
+### Habits
 
-- `GET /api/sleep/settings`
-- `PUT /api/sleep/settings`
-- `GET /api/sleep/logs`
-- `POST /api/sleep/logs`
-- `PUT /api/sleep/logs/:id`
-- `DELETE /api/sleep/logs/:id`
-- `GET /api/sleep/stats`
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/habits` | List habits |
+| `POST` | `/api/habits` | Create habit |
+| `GET` | `/api/habits/:id` | Get habit |
+| `PUT` | `/api/habits/:id` | Update habit |
+| `DELETE` | `/api/habits/:id` | Delete habit |
+| `PATCH` | `/api/habits/:id/check` | Toggle daily check |
 
-Admin:
+### Sleep
 
-- `GET /api/admin/stats`
-- `GET /api/admin/users`
-- `PATCH /api/admin/users/:id/role`
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/sleep/settings` | Get sleep settings |
+| `PUT` | `/api/sleep/settings` | Update sleep settings |
+| `GET` | `/api/sleep/logs` | List sleep logs |
+| `POST` | `/api/sleep/logs` | Create sleep log |
+| `PUT` | `/api/sleep/logs/:id` | Update sleep log |
+| `DELETE` | `/api/sleep/logs/:id` | Delete sleep log |
+| `GET` | `/api/sleep/stats` | Get sleep statistics |
 
-All non-auth APIs require:
+### Admin
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/admin/stats` | Project statistics |
+| `GET` | `/api/admin/users` | User table |
+| `PATCH` | `/api/admin/users/:id/role` | Update user role |
+
+For all protected endpoints:
 
 ```http
 Authorization: Bearer TOKEN
 ```
 
-## Health Check
+---
+
+## 🫀 Health Check
 
 ```bash
 curl https://your-domain.example.com/api/health
 ```
 
-Expected:
+Expected response:
 
 ```json
 {
@@ -262,18 +390,22 @@ Expected:
 }
 ```
 
-## Deployment
+---
+
+## ☁️ Deployment
 
 ### Vercel
 
-This repo supports one-project Vercel deployment:
+This repository supports single-project Vercel deployment:
 
-- static frontend from `web/`
-- Go API from `api/index.go`
-- root `vercel.json`
-- root `package.json` build script
+| Part | Source |
+|---|---|
+| Frontend | `web/` |
+| API | `api/index.go` |
+| Routing | `vercel.json` |
+| Build script | root `package.json` |
 
-Required Vercel production env:
+Required Vercel production environment:
 
 ```env
 APP_ENV=production
@@ -288,7 +420,7 @@ Deploy:
 vercel --prod
 ```
 
-### Render/Railway/Fly.io
+### Render / Railway / Fly.io
 
 The same backend can run as a long-running Go server:
 
@@ -297,60 +429,137 @@ go build -o app ./cmd/app
 ./app
 ```
 
-Set `PORT`, `DATABASE_URL`, `JWT_SECRET`, and `CORS_ORIGIN`.
+Set:
 
-## Frontend API Resolution
+```env
+PORT
+DATABASE_URL
+JWT_SECRET
+CORS_ORIGIN
+```
 
-All frontend requests go through `PulseDeskAPI.apiFetch`.
+---
+
+## 🌐 Frontend API Resolution
+
+All frontend requests go through:
+
+```js
+PulseDeskAPI.apiFetch
+```
 
 API base priority:
 
-1. `window.__API_BASE_URL__`
-2. `window.PULSEDESK_CONFIG.API_BASE_URL`
-3. `<meta name="api-base-url" content="...">`
-4. `window.PULSEDESK_API_BASE_URL` / `window.API_BASE_URL`
-5. same-origin fallback
-6. `http://localhost:8082` only when opened through `file:`
+| Priority | Source |
+|---:|---|
+| 1 | `window.__API_BASE_URL__` |
+| 2 | `window.PULSEDESK_CONFIG.API_BASE_URL` |
+| 3 | `<meta name="api-base-url" content="...">` |
+| 4 | `window.PULSEDESK_API_BASE_URL` / `window.API_BASE_URL` |
+| 5 | Same-origin fallback |
+| 6 | `http://localhost:8082` only when opened through `file:` |
 
 `apiFetch` handles:
 
-- JSON content type
-- Bearer token injection
-- `401` cleanup
-- redirect to `/auth`
-- no fake localStorage backend
+| Feature | Status |
+|---|---:|
+| JSON content type | ✅ |
+| Bearer token injection | ✅ |
+| `401` cleanup | ✅ |
+| Redirect to `/auth` | ✅ |
+| No fake localStorage backend | ✅ |
 
-## Verification
+---
+
+## ✅ Verification
+
+Backend:
 
 ```bash
 go mod tidy
 go test ./...
 go build -o app.exe ./cmd/app
+```
+
+Frontend syntax checks:
+
+```bash
 node --check web/app.js
 node --check web/auth.js
 node --check web/api-config.js
 ```
 
-Production smoke used during deployment:
+Smoke checks used during deployment:
 
-- `/api/health`
-- register
-- login
-- `/api/auth/me`
-- tasks create/delete
-- normal user gets `403` on admin API
-- admin login
-- admin stats
-- auth/app pages return `200`
-- frontend files return valid UTF-8
+| Check | Expected |
+|---|---|
+| `/api/health` | OK |
+| Register | OK |
+| Login | OK |
+| `/api/auth/me` | Returns safe user data |
+| Create/delete task | OK |
+| Regular user admin access | `403 Forbidden` |
+| Admin login | OK |
+| Admin stats | OK |
+| Auth/app pages | `200 OK` |
+| Frontend files | Correct UTF-8 |
 
-## Security Notes
+---
 
-- Passwords are bcrypt hashes.
-- JWT secret is backend-only.
-- Supabase service role key is not used by the frontend.
-- `DATABASE_URL` is backend-only.
-- `.env`, `.vercel`, logs, binaries, and local generated files are ignored by git.
-- The backend logs connection source labels, not full connection strings.
+## 🔒 Security Notes
 
-PulseDesk is a compact full-stack app, but the boring production details are handled: database migrations, real auth, admin protection, deployment config, frontend API routing, and safety around secrets.
+| Area | Rule |
+|---|---|
+| Passwords | Stored as bcrypt hashes |
+| JWT secret | Backend only |
+| Supabase service role key | Not used by frontend |
+| `DATABASE_URL` | Backend only |
+| `.env` files | Ignored by Git |
+| `.vercel` files | Ignored by Git |
+| Local binaries | Ignored by Git |
+| Connection logs | Show source labels, not full connection strings |
+
+---
+
+## 🧩 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Go 1.25 |
+| HTTP router | Gin |
+| Database | Supabase PostgreSQL |
+| SQL access | `database/sql` |
+| PostgreSQL driver | `github.com/jackc/pgx/v5/stdlib` |
+| Auth | JWT + bcrypt |
+| Frontend | Static HTML/CSS/JS |
+| Deployment | Vercel |
+| Architecture | Handler → Service → Repository |
+
+---
+
+## 🏁 Final Note
+
+PulseDesk is compact, but it handles the boring production details many demo apps skip:
+
+- real database migrations
+- real authentication
+- protected admin routes
+- role-based access
+- deployment configuration
+- API routing
+- frontend API resolution
+- secret isolation
+- smoke testing
+- PostgreSQL-backed analytics
+
+It is built like a real application, not a throwaway prototype.
+
+---
+
+<div align="center">
+
+### ⚡ PulseDesk
+
+**A serious productivity system with a real backend behind it.**
+
+</div>

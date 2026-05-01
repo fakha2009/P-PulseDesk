@@ -85,10 +85,12 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 		api.GET("/stats", statsHandler.Get)
 		api.GET("/tasks", taskHandler.GetAll)
 		api.POST("/tasks", taskHandler.Create)
+		api.PATCH("/tasks/reorder", taskHandler.Reorder)
 		api.GET("/tasks/:id", taskHandler.GetByID)
 		api.PUT("/tasks/:id", taskHandler.Update)
 		api.DELETE("/tasks/:id", taskHandler.Delete)
 		api.PATCH("/tasks/:id/toggle", taskHandler.Toggle)
+		api.PATCH("/tasks/:id/subtasks/:subtaskID/toggle", taskHandler.ToggleSubtask)
 
 		api.GET("/habits", habitHandler.GetAll)
 		api.POST("/habits", habitHandler.Create)

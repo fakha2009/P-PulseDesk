@@ -42,6 +42,10 @@
                     <i class="fas fa-list-check" aria-hidden="true"></i>
                     <span>Задачи</span>
                 </button>
+                <button class="nav-link" type="button" data-page="calendar">
+                    <i class="fas fa-calendar-days" aria-hidden="true"></i>
+                    <span>Календарь</span>
+                </button>
                 <button class="nav-link" type="button" data-page="habits">
                     <i class="fas fa-repeat" aria-hidden="true"></i>
                     <span>Привычки</span>
@@ -204,6 +208,8 @@
                         <button class="segment" type="button" data-filter="active">Активные</button>
                         <button class="segment" type="button" data-filter="completed">Готовые</button>
                         <button class="segment" type="button" data-filter="today">Сегодня</button>
+                        <button class="segment" type="button" data-filter="tomorrow">Завтра</button>
+                        <button class="segment" type="button" data-filter="week">Неделя</button>
                         <button class="segment" type="button" data-filter="overdue">Просрочены</button>
                     </div>
                     <label class="search-field" for="taskSearch">
@@ -213,6 +219,21 @@
                 </div>
 
                 <div class="stack-list" id="tasksList"></div>
+            </section>
+
+            <section class="page" id="calendar-page" aria-labelledby="calendar-title">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">план</p>
+                        <h1 id="calendar-title">Календарь</h1>
+                        <p>Задачи по дням, ближайшие дедлайны и свободные окна.</p>
+                    </div>
+                    <button class="btn btn-primary" type="button" data-page-jump="tasks">
+                        <i class="fas fa-plus" aria-hidden="true"></i>
+                        Новая задача
+                    </button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
             </section>
 
             <section class="page" id="habits-page" aria-labelledby="habits-title">
@@ -461,6 +482,7 @@
         <nav class="bottom-nav" aria-label="Мобильная навигация">
             <button class="bottom-link active" type="button" data-page="dashboard" aria-label="Обзор"><i class="fas fa-chart-pie" aria-hidden="true"></i></button>
             <button class="bottom-link" type="button" data-page="tasks" aria-label="Задачи"><i class="fas fa-list-check" aria-hidden="true"></i></button>
+            <button class="bottom-link" type="button" data-page="calendar" aria-label="Календарь"><i class="fas fa-calendar-days" aria-hidden="true"></i></button>
             <button class="bottom-link" type="button" data-page="habits" aria-label="Привычки"><i class="fas fa-repeat" aria-hidden="true"></i></button>
             <button class="bottom-link" type="button" data-page="sleep" aria-label="Сон"><i class="fas fa-moon" aria-hidden="true"></i></button>
             <button class="bottom-link" type="button" data-page="profile" aria-label="Профиль"><i class="fas fa-user-gear" aria-hidden="true"></i></button>
@@ -487,6 +509,20 @@
                 </select>
                 <label for="taskDueDate">Срок и время</label>
                 <input id="taskDueDate" type="datetime-local">
+                <label for="taskRecurrence">Повторение</label>
+                <select id="taskRecurrence">
+                    <option value="none">Не повторять</option>
+                    <option value="daily">Каждый день</option>
+                    <option value="weekly">Каждую неделю</option>
+                    <option value="monthly">Каждый месяц</option>
+                </select>
+                <div class="checklist-editor">
+                    <div class="section-head compact-head">
+                        <h3>Чеклист</h3>
+                        <button class="text-button" type="button" id="addSubtaskButton">Добавить пункт</button>
+                    </div>
+                    <div class="subtask-editor-list" id="subtaskEditorList"></div>
+                </div>
                 <div class="form-actions">
                     <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
                     <button class="btn btn-primary" type="submit">Сохранить</button>

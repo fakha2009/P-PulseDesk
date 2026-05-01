@@ -84,7 +84,10 @@ type Task struct {
 	Description string     `json:"description,omitempty"`
 	Priority    Priority   `json:"priority"`
 	DueDate     *time.Time `json:"due_date,omitempty"`
+	Recurrence  string     `json:"recurrence"`
+	SortOrder   int        `json:"sort_order"`
 	Completed   bool       `json:"completed"`
+	Subtasks    []Subtask  `json:"subtasks,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
@@ -102,6 +105,8 @@ type TaskCreate struct {
 	Description string     `json:"description"`
 	Priority    Priority   `json:"priority" validate:"required,oneof=low medium high"`
 	DueDate     *time.Time `json:"due_date"`
+	Recurrence  string     `json:"recurrence"`
+	Subtasks    []Subtask  `json:"subtasks"`
 	Completed   bool       `json:"completed"`
 }
 
@@ -110,7 +115,23 @@ type TaskUpdate struct {
 	Description string     `json:"description"`
 	Priority    Priority   `json:"priority" validate:"omitempty,oneof=low medium high"`
 	DueDate     *time.Time `json:"due_date"`
+	Recurrence  string     `json:"recurrence"`
+	Subtasks    []Subtask  `json:"subtasks"`
 	Completed   *bool      `json:"completed"`
+}
+
+type Subtask struct {
+	ID        int64     `json:"id,omitempty"`
+	TaskID    int64     `json:"task_id,omitempty"`
+	Title     string    `json:"title"`
+	Completed bool      `json:"completed"`
+	SortOrder int       `json:"sort_order"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+}
+
+type TaskReorder struct {
+	IDs []int64 `json:"ids"`
 }
 
 type Habit struct {

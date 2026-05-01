@@ -54,7 +54,28 @@ func (db *DB) Migrate() error {
 			description TEXT,
 			priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low','medium','high')),
 			due_date TIMESTAMPTZ NULL,
+			recurrence TEXT NOT NULL DEFAULT 'none' CHECK (recurrence IN ('none','daily','weekly','monthly')),
+			sort_order INT NOT NULL DEFAULT 0,
 			completed BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence TEXT NOT NULL DEFAULT 'none'`,
+		`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0`,
+		`DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'tasks_recurrence_check'
+			) THEN
+				ALTER TABLE tasks ADD CONSTRAINT tasks_recurrence_check CHECK (recurrence IN ('none','daily','weekly','monthly'));
+			END IF;
+		END $$`,
+		`CREATE TABLE IF NOT EXISTS task_subtasks (
+			id BIGSERIAL PRIMARY KEY,
+			task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+			title VARCHAR(255) NOT NULL,
+			completed BOOLEAN NOT NULL DEFAULT FALSE,
+			sort_order INT NOT NULL DEFAULT 0,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
@@ -99,6 +120,8 @@ func (db *DB) Migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed)`,
 		`CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_tasks_sort_order ON tasks(user_id, sort_order)`,
+		`CREATE INDEX IF NOT EXISTS idx_task_subtasks_task_id ON task_subtasks(task_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_habits_user_id ON habits(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_habit_checks_habit_id ON habit_checks(habit_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_habit_checks_user_id ON habit_checks(user_id)`,

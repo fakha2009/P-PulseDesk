@@ -77,6 +77,20 @@ func (s *TaskService) Toggle(userID, id int64) (*models.Task, error) {
 	return s.repo.Toggle(id)
 }
 
+func (s *TaskService) Reorder(userID int64, ids []int64) error {
+	if len(ids) == 0 {
+		return errors.New("task order is empty")
+	}
+	return s.repo.Reorder(userID, ids)
+}
+
+func (s *TaskService) ToggleSubtask(userID, taskID, subtaskID int64) (*models.Subtask, error) {
+	if _, err := s.GetByID(userID, taskID); err != nil {
+		return nil, err
+	}
+	return s.repo.ToggleSubtask(taskID, subtaskID)
+}
+
 func (s *TaskService) CountByStatus(userID int64) (int, int, int, int, int, error) {
 	return s.repo.CountByStatus(userID)
 }

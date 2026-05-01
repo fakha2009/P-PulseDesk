@@ -43,6 +43,28 @@ func (h *TaskHandler) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResponse{Success: true, Data: tasks})
 }
 
+func (h *TaskHandler) Reorder(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	var payload models.TaskReorder
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.service.Reorder(userID, payload.IDs); err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Failed to reorder tasks: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{Success: true})
+}
+
 func (h *TaskHandler) GetByID(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -187,6 +209,37 @@ func (h *TaskHandler) Toggle(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResponse{Success: true, Data: task})
 }
 
+func (h *TaskHandler) ToggleSubtask(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	taskID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid task ID format",
+		})
+		return
+	}
+	subtaskID, err := strconv.ParseInt(c.Param("subtaskID"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid subtask ID format",
+		})
+		return
+	}
+
+	subtask, err := h.service.ToggleSubtask(userID, taskID, subtaskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   "Failed to toggle subtask: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{Success: true, Data: subtask})
+}
+
 // Validation functions
 func validateTaskCreate(task *models.TaskCreate) error {
 	if strings.TrimSpace(task.Title) == "" {
@@ -198,8 +251,14 @@ func validateTaskCreate(task *models.TaskCreate) error {
 	if task.Priority != "" && task.Priority != models.PriorityLow && task.Priority != models.PriorityMedium && task.Priority != models.PriorityHigh {
 		return fmt.Errorf("priority must be one of: low, medium, high")
 	}
+	if !validRecurrence(task.Recurrence) {
+		return fmt.Errorf("recurrence must be one of: none, daily, weekly, monthly")
+	}
 	if task.DueDate != nil && dueDateIsPast(*task.DueDate) {
 		return fmt.Errorf("due date cannot be in the past")
+	}
+	if err := validateSubtasks(task.Subtasks); err != nil {
+		return err
 	}
 	return nil
 }
@@ -216,12 +275,37 @@ func validateTaskUpdate(task *models.TaskUpdate) error {
 	if task.Priority != "" && task.Priority != models.PriorityLow && task.Priority != models.PriorityMedium && task.Priority != models.PriorityHigh {
 		return fmt.Errorf("priority must be one of: low, medium, high")
 	}
+	if !validRecurrence(task.Recurrence) {
+		return fmt.Errorf("recurrence must be one of: none, daily, weekly, monthly")
+	}
 	if task.DueDate != nil && dueDateIsPast(*task.DueDate) {
 		return fmt.Errorf("due date cannot be in the past")
+	}
+	if err := validateSubtasks(task.Subtasks); err != nil {
+		return err
 	}
 	return nil
 }
 
 func dueDateIsPast(dueDate time.Time) bool {
 	return dueDate.Before(time.Now().Add(-1 * time.Minute))
+}
+
+func validRecurrence(value string) bool {
+	return value == "" || value == "none" || value == "daily" || value == "weekly" || value == "monthly"
+}
+
+func validateSubtasks(subtasks []models.Subtask) error {
+	if len(subtasks) > 30 {
+		return fmt.Errorf("checklist can contain up to 30 items")
+	}
+	for _, subtask := range subtasks {
+		if strings.TrimSpace(subtask.Title) == "" {
+			continue
+		}
+		if len(subtask.Title) > 255 {
+			return fmt.Errorf("checklist item must be less than 255 characters")
+		}
+	}
+	return nil
 }

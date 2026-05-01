@@ -9,6 +9,10 @@ class ProductivityDashboard {
         this.searchTimer = null;
         this.clockTimer = null;
         this.notificationTimer = null;
+        this.pomodoroTimer = null;
+        this.pomodoroRemaining = 0;
+        this.pomodoroTaskID = null;
+        this.originalTitle = document.title;
         this.confirmResolver = null;
         this.init();
     }
@@ -22,6 +26,7 @@ class ProductivityDashboard {
         }
 
         this.bindEvents();
+        this.registerServiceWorker();
         this.startClock();
         this.startTaskNotifications();
         this.setDefaultSleepInputs();
@@ -66,6 +71,7 @@ class ProductivityDashboard {
             event.preventDefault();
             this.saveTask();
         });
+        document.getElementById('addSubtaskButton')?.addEventListener('click', () => this.addSubtaskEditorRow());
 
         document.getElementById('addHabitButton')?.addEventListener('click', () => this.openHabitModal());
         document.getElementById('habitForm')?.addEventListener('submit', (event) => {
@@ -179,6 +185,18 @@ class ProductivityDashboard {
         this.notificationTimer = setInterval(() => this.checkTaskDeadlines(), 30000);
     }
 
+    registerServiceWorker() {
+        if (!('serviceWorker' in navigator) || window.location.protocol === 'file:') {
+            return;
+        }
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data?.type === 'navigate' && event.data.page) {
+                this.showPage(event.data.page);
+            }
+        });
+    }
+
     async ensureNotificationPermission() {
         if (!('Notification' in window)) {
             return false;
@@ -220,16 +238,28 @@ class ProductivityDashboard {
             if (localStorage.getItem(key)) return;
             localStorage.setItem(key, new Date().toISOString());
 
-            const notification = new Notification('PulseDesk: задача скоро истекает', {
-                body: `${task.title} · срок ${this.formatDateTime(task.due_date)}`,
-                tag: key,
-            });
-            notification.onclick = () => {
-                window.focus();
-                this.showPage('tasks');
-                notification.close();
-            };
+            this.showTaskNotification(key, task);
         });
+    }
+
+    async showTaskNotification(key, task) {
+        const body = `${task.title} · срок ${this.formatDateTime(task.due_date)}`;
+        const registration = await navigator.serviceWorker?.ready.catch(() => null);
+        if (registration?.showNotification) {
+            registration.showNotification('PulseDesk: задача скоро истекает', {
+                body,
+                tag: key,
+                data: { url: '/app', page: 'tasks' },
+            });
+            return;
+        }
+
+        const notification = new Notification('PulseDesk: задача скоро истекает', { body, tag: key });
+        notification.onclick = () => {
+            window.focus();
+            this.showPage('tasks');
+            notification.close();
+        };
     }
 
     async loadPageData() {
@@ -238,6 +268,9 @@ class ProductivityDashboard {
         }
         if (this.currentPage === 'tasks') {
             await this.loadTasks();
+        }
+        if (this.currentPage === 'calendar') {
+            await this.loadCalendar();
         }
         if (this.currentPage === 'habits') {
             await this.loadHabits();
@@ -415,10 +448,58 @@ class ProductivityDashboard {
             const tasks = await this.request(`/api/tasks${params.toString() ? `?${params}` : ''}`);
             this.tasks = tasks || [];
             this.renderTasks();
+            this.renderCalendar();
             this.checkTaskDeadlines();
         } catch (error) {
             this.toast('Не удалось загрузить задачи', 'error');
         }
+    }
+
+    async loadCalendar() {
+        try {
+            const tasks = await this.request('/api/tasks');
+            this.tasks = tasks || [];
+            this.renderCalendar();
+            this.checkTaskDeadlines();
+        } catch (error) {
+            this.toast('Не удалось загрузить календарь', 'error');
+        }
+    }
+
+    renderCalendar() {
+        const container = document.getElementById('calendarGrid');
+        if (!container) return;
+        const tasks = (this.tasks || []).filter((task) => task.due_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const days = Array.from({ length: 14 }, (_, index) => {
+            const day = new Date(today);
+            day.setDate(today.getDate() + index);
+            return day;
+        });
+
+        container.innerHTML = days.map((day) => {
+            const key = this.dateInputValue(day);
+            const dayTasks = tasks.filter((task) => this.dateInputValue(new Date(task.due_date)) === key)
+                .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+            return `
+                <article class="calendar-day ${key === this.todayDateValue() ? 'today' : ''}">
+                    <div class="calendar-day-head">
+                        <strong>${new Intl.DateTimeFormat('ru-RU', { weekday: 'short' }).format(day)}</strong>
+                        <span>${new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short' }).format(day)}</span>
+                    </div>
+                    <div class="calendar-task-list">
+                        ${dayTasks.length ? dayTasks.map((task) => `
+                            <button class="calendar-task ${task.completed ? 'completed' : ''}" type="button" data-action="task-edit" data-id="${task.id}">
+                                <span>${this.timeOnly(task.due_date)}</span>
+                                <strong>${this.escape(task.title)}</strong>
+                            </button>
+                        `).join('') : '<p>Свободно</p>'}
+                    </div>
+                </article>
+            `;
+        }).join('');
     }
 
     renderTasks() {
@@ -429,14 +510,18 @@ class ProductivityDashboard {
             return;
         }
         container.innerHTML = this.tasks.map((task) => this.taskTemplate(task)).join('');
+        this.bindTaskDrag();
     }
 
     taskTemplate(task, compact = false) {
         const priorityText = { low: 'Низкий', medium: 'Средний', high: 'Высокий' }[task.priority] || 'Средний';
         const due = task.due_date ? this.formatDateTime(task.due_date) : '';
         const completed = task.completed ? 'completed' : '';
+        const recurrenceText = { daily: 'ежедневно', weekly: 'еженедельно', monthly: 'ежемесячно' }[task.recurrence] || '';
+        const subtasks = task.subtasks || [];
+        const doneSubtasks = subtasks.filter((item) => item.completed).length;
         return `
-            <article class="list-item ${completed}" data-id="${task.id}">
+            <article class="list-item task-card ${completed}" data-id="${task.id}" draggable="${compact ? 'false' : 'true'}">
                 <button class="check-button ${task.completed ? 'checked' : ''}" type="button" data-action="task-toggle" data-id="${task.id}" aria-label="Изменить статус задачи">
                     <i class="fas fa-check" aria-hidden="true"></i>
                 </button>
@@ -446,10 +531,23 @@ class ProductivityDashboard {
                     <div class="item-meta">
                         <span class="priority priority-${task.priority}">${priorityText}</span>
                         ${due ? `<span><i class="fas fa-calendar" aria-hidden="true"></i> ${due}</span>` : ''}
+                        ${recurrenceText ? `<span><i class="fas fa-repeat" aria-hidden="true"></i> ${recurrenceText}</span>` : ''}
+                        ${subtasks.length ? `<span><i class="fas fa-square-check" aria-hidden="true"></i> ${doneSubtasks}/${subtasks.length}</span>` : ''}
                     </div>
+                    ${subtasks.length && !compact ? `
+                        <div class="subtask-list">
+                            ${subtasks.map((subtask) => `
+                                <label class="subtask-item ${subtask.completed ? 'done' : ''}">
+                                    <input type="checkbox" ${subtask.completed ? 'checked' : ''} data-action="subtask-toggle" data-id="${task.id}" data-subtask-id="${subtask.id}">
+                                    <span>${this.escape(subtask.title)}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
                 ${compact ? '' : `
                     <div class="item-actions">
+                        <button class="icon-button" type="button" data-action="task-pomodoro" data-id="${task.id}" aria-label="Запустить Pomodoro"><i class="fas fa-hourglass-half" aria-hidden="true"></i></button>
                         <button class="icon-button" type="button" data-action="task-edit" data-id="${task.id}" aria-label="Редактировать задачу"><i class="fas fa-pen" aria-hidden="true"></i></button>
                         <button class="icon-button danger" type="button" data-action="task-delete" data-id="${task.id}" aria-label="Удалить задачу"><i class="fas fa-trash" aria-hidden="true"></i></button>
                     </div>
@@ -466,7 +564,44 @@ class ProductivityDashboard {
         document.getElementById('taskDescription').value = task?.description || '';
         document.getElementById('taskPriority').value = task?.priority || 'medium';
         document.getElementById('taskDueDate').value = this.taskDateValue(task?.due_date);
+        document.getElementById('taskRecurrence').value = task?.recurrence || 'none';
+        this.renderSubtaskEditor(task?.subtasks || []);
         this.openModal('taskModal');
+    }
+
+    renderSubtaskEditor(subtasks = []) {
+        const container = document.getElementById('subtaskEditorList');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!subtasks.length) {
+            this.addSubtaskEditorRow();
+            return;
+        }
+        subtasks.forEach((subtask) => this.addSubtaskEditorRow(subtask));
+    }
+
+    addSubtaskEditorRow(subtask = {}) {
+        const container = document.getElementById('subtaskEditorList');
+        if (!container) return;
+        const row = document.createElement('div');
+        row.className = 'subtask-editor-row';
+        row.innerHTML = `
+            <input type="checkbox" ${subtask.completed ? 'checked' : ''} aria-label="Пункт выполнен">
+            <input type="text" maxlength="255" value="${this.escape(subtask.title || '')}" placeholder="Пункт чеклиста">
+            <button class="icon-button" type="button" aria-label="Удалить пункт"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+        `;
+        row.querySelector('button').addEventListener('click', () => row.remove());
+        container.appendChild(row);
+    }
+
+    readSubtaskEditor() {
+        return Array.from(document.querySelectorAll('#subtaskEditorList .subtask-editor-row'))
+            .map((row, index) => ({
+                title: row.querySelector('input[type="text"]').value.trim(),
+                completed: row.querySelector('input[type="checkbox"]').checked,
+                sort_order: index,
+            }))
+            .filter((subtask) => subtask.title);
     }
 
     async saveTask() {
@@ -489,6 +624,8 @@ class ProductivityDashboard {
             title,
             description: document.getElementById('taskDescription').value.trim(),
             priority: document.getElementById('taskPriority').value,
+            recurrence: document.getElementById('taskRecurrence').value,
+            subtasks: this.readSubtaskEditor(),
             due_date: dueDate ? dueDate.toISOString() : null,
         };
 
@@ -540,6 +677,111 @@ class ProductivityDashboard {
             await Promise.all([this.loadStats(), this.loadTasks(), this.loadDashboard()]);
         } catch (error) {
             this.toast(error.message, 'error');
+        }
+    }
+
+    async toggleSubtask(taskID, subtaskID) {
+        try {
+            await this.request(`/api/tasks/${taskID}/subtasks/${subtaskID}/toggle`, { method: 'PATCH' });
+            await Promise.all([this.loadTasks(), this.loadDashboard()]);
+        } catch (error) {
+            this.toast(error.message, 'error');
+        }
+    }
+
+    bindTaskDrag() {
+        const list = document.getElementById('tasksList');
+        if (!list) return;
+
+        list.querySelectorAll('.task-card').forEach((item) => {
+            item.addEventListener('dragstart', () => item.classList.add('dragging'));
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+                this.saveTaskOrder();
+            });
+        });
+
+        list.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            const dragging = list.querySelector('.dragging');
+            if (!dragging) return;
+            const after = this.getDragAfterElement(list, event.clientY);
+            if (after) {
+                list.insertBefore(dragging, after);
+            } else {
+                list.appendChild(dragging);
+            }
+        });
+    }
+
+    getDragAfterElement(container, y) {
+        const items = [...container.querySelectorAll('.task-card:not(.dragging)')];
+        return items.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset, element: child };
+            }
+            return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    async saveTaskOrder() {
+        if (this.currentFilter !== 'all') {
+            return;
+        }
+        const ids = Array.from(document.querySelectorAll('#tasksList .task-card'))
+            .map((item) => Number(item.dataset.id))
+            .filter(Boolean);
+        if (!ids.length) return;
+        try {
+            await this.request('/api/tasks/reorder', {
+                method: 'PATCH',
+                body: JSON.stringify({ ids }),
+            });
+        } catch (error) {
+            this.toast('Не удалось сохранить порядок задач', 'error');
+        }
+    }
+
+    startPomodoro(id) {
+        const task = this.tasks?.find((item) => String(item.id) === String(id));
+        if (!task) return;
+        if (this.pomodoroTimer) {
+            clearInterval(this.pomodoroTimer);
+        }
+        this.pomodoroTaskID = task.id;
+        this.pomodoroRemaining = 25 * 60;
+        this.toast(`Pomodoro запущен: ${task.title}`, 'info');
+        this.renderPomodoroTick(task.title);
+        this.pomodoroTimer = setInterval(() => {
+            this.pomodoroRemaining -= 1;
+            this.renderPomodoroTick(task.title);
+            if (this.pomodoroRemaining <= 0) {
+                clearInterval(this.pomodoroTimer);
+                this.pomodoroTimer = null;
+                document.title = this.originalTitle;
+                this.toast(`Pomodoro завершён: ${task.title}`, 'success');
+                this.showPomodoroNotification(task);
+            }
+        }, 1000);
+    }
+
+    renderPomodoroTick(title) {
+        const minutes = Math.floor(this.pomodoroRemaining / 60);
+        const seconds = this.pomodoroRemaining % 60;
+        document.title = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} · ${title}`;
+    }
+
+    async showPomodoroNotification(task) {
+        await this.ensureNotificationPermission();
+        const registration = await navigator.serviceWorker?.ready.catch(() => null);
+        if (registration?.showNotification) {
+            registration.showNotification('PulseDesk: Pomodoro завершён', {
+                body: task.title,
+                tag: `pulsedesk-pomodoro-${task.id}`,
+                data: { url: '/app', page: 'tasks' },
+            });
         }
     }
 
@@ -989,11 +1231,13 @@ class ProductivityDashboard {
         const button = event.target.closest('[data-action]');
         if (!button) return;
 
-        const { action, id } = button.dataset;
+        const { action, id, subtaskId } = button.dataset;
         const actions = {
             'task-toggle': () => this.toggleTask(id),
             'task-edit': () => this.editTask(id),
             'task-delete': () => this.deleteTask(id),
+            'task-pomodoro': () => this.startPomodoro(id),
+            'subtask-toggle': () => this.toggleSubtask(id, subtaskId),
             'habit-toggle': () => this.toggleHabit(id),
             'habit-edit': () => this.editHabit(id),
             'habit-delete': () => this.deleteHabit(id),

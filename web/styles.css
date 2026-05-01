@@ -525,6 +525,129 @@ select:focus-visible {
     gap: 12px;
 }
 
+.task-card {
+    cursor: grab;
+}
+
+.task-card.dragging {
+    opacity: 0.45;
+}
+
+.subtask-list {
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+}
+
+.subtask-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.subtask-item.done span {
+    text-decoration: line-through;
+}
+
+.checklist-editor {
+    display: grid;
+    gap: 10px;
+}
+
+.compact-head {
+    margin-bottom: 0;
+}
+
+.compact-head h3 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.subtask-editor-list {
+    display: grid;
+    gap: 8px;
+}
+
+.subtask-editor-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.calendar-day {
+    min-height: 170px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.calendar-day.today {
+    border-color: var(--primary);
+}
+
+.calendar-day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.calendar-day-head span {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.calendar-task-list {
+    display: grid;
+    gap: 8px;
+}
+
+.calendar-task-list p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.calendar-task {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-muted);
+    color: var(--text);
+    text-align: left;
+    display: grid;
+    gap: 3px;
+}
+
+.calendar-task span {
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.calendar-task strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar-task.completed strong {
+    text-decoration: line-through;
+    color: var(--muted);
+}
+
 .list-item.completed {
     opacity: 0.68;
 }
@@ -1348,6 +1471,10 @@ select:focus-visible {
         grid-template-columns: 1fr;
     }
 
+    .calendar-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .dashboard-row {
         grid-template-columns: auto minmax(0, 1fr) auto;
     }
@@ -1474,7 +1601,7 @@ select:focus-visible {
         height: 58px;
         padding: 6px;
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 4px;
         border-radius: var(--radius);
         border: 1px solid var(--border);
@@ -1484,7 +1611,7 @@ select:focus-visible {
     }
 
     .has-admin .bottom-nav {
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(7, 1fr);
     }
 
     .bottom-link {
@@ -1542,6 +1669,10 @@ select:focus-visible {
     }
 
     .admin-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .calendar-grid {
         grid-template-columns: 1fr;
     }
 

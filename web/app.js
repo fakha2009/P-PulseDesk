@@ -8,6 +8,7 @@ class ProductivityDashboard {
         this.editingSleepLog = null;
         this.searchTimer = null;
         this.clockTimer = null;
+        this.notificationTimer = null;
         this.confirmResolver = null;
         this.init();
     }
@@ -22,6 +23,7 @@ class ProductivityDashboard {
 
         this.bindEvents();
         this.startClock();
+        this.startTaskNotifications();
         this.setDefaultSleepInputs();
         this.setTaskDateBounds();
 
@@ -170,6 +172,66 @@ class ProductivityDashboard {
         }).format(now));
     }
 
+    startTaskNotifications() {
+        if (this.notificationTimer) {
+            clearInterval(this.notificationTimer);
+        }
+        this.notificationTimer = setInterval(() => this.checkTaskDeadlines(), 30000);
+    }
+
+    async ensureNotificationPermission() {
+        if (!('Notification' in window)) {
+            return false;
+        }
+        if (Notification.permission === 'granted') {
+            return true;
+        }
+        if (Notification.permission === 'denied') {
+            return false;
+        }
+        try {
+            return (await Notification.requestPermission()) === 'granted';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    notificationKey(task) {
+        return `pulsedesk-task-reminder:${task.id}:${task.due_date}`;
+    }
+
+    checkTaskDeadlines() {
+        if (!('Notification' in window) || Notification.permission !== 'granted' || !Array.isArray(this.tasks)) {
+            return;
+        }
+
+        const now = Date.now();
+        const reminderWindowStart = 9.5 * 60 * 1000;
+        const reminderWindowEnd = 10.5 * 60 * 1000;
+
+        this.tasks.forEach((task) => {
+            if (task.completed || !task.due_date) return;
+            const dueAt = new Date(task.due_date).getTime();
+            if (Number.isNaN(dueAt)) return;
+            const timeLeft = dueAt - now;
+            if (timeLeft < reminderWindowStart || timeLeft > reminderWindowEnd) return;
+
+            const key = this.notificationKey(task);
+            if (localStorage.getItem(key)) return;
+            localStorage.setItem(key, new Date().toISOString());
+
+            const notification = new Notification('PulseDesk: задача скоро истекает', {
+                body: `${task.title} · срок ${this.formatDateTime(task.due_date)}`,
+                tag: key,
+            });
+            notification.onclick = () => {
+                window.focus();
+                this.showPage('tasks');
+                notification.close();
+            };
+        });
+    }
+
     async loadPageData() {
         if (this.currentPage === 'dashboard') {
             await this.loadDashboard();
@@ -296,7 +358,7 @@ class ProductivityDashboard {
 
     dashboardTaskRow(task) {
         const priorityText = { low: 'Низкий', medium: 'Средний', high: 'Высокий' }[task.priority] || 'Средний';
-        const due = task.due_date ? this.formatDate(task.due_date) : 'без срока';
+        const due = task.due_date ? this.formatDateTime(task.due_date) : 'без срока';
         return `
             <article class="dashboard-row task-dashboard-row ${task.completed ? 'completed' : ''}" data-id="${task.id}">
                 <button class="check-button mini ${task.completed ? 'checked' : ''}" type="button" data-action="task-toggle" data-id="${task.id}" aria-label="Изменить статус задачи">
@@ -353,6 +415,7 @@ class ProductivityDashboard {
             const tasks = await this.request(`/api/tasks${params.toString() ? `?${params}` : ''}`);
             this.tasks = tasks || [];
             this.renderTasks();
+            this.checkTaskDeadlines();
         } catch (error) {
             this.toast('Не удалось загрузить задачи', 'error');
         }
@@ -370,7 +433,7 @@ class ProductivityDashboard {
 
     taskTemplate(task, compact = false) {
         const priorityText = { low: 'Низкий', medium: 'Средний', high: 'Высокий' }[task.priority] || 'Средний';
-        const due = task.due_date ? this.formatDate(task.due_date) : '';
+        const due = task.due_date ? this.formatDateTime(task.due_date) : '';
         const completed = task.completed ? 'completed' : '';
         return `
             <article class="list-item ${completed}" data-id="${task.id}">
@@ -414,15 +477,19 @@ class ProductivityDashboard {
         }
 
         const dueValue = document.getElementById('taskDueDate').value;
-        if (dueValue && dueValue < this.todayDateValue()) {
+        const dueDate = dueValue ? new Date(dueValue) : null;
+        if (dueDate && dueDate.getTime() < Date.now()) {
             this.toast('Срок задачи не может быть в прошлом', 'error');
             return;
+        }
+        if (dueDate) {
+            await this.ensureNotificationPermission();
         }
         const payload = {
             title,
             description: document.getElementById('taskDescription').value.trim(),
             priority: document.getElementById('taskPriority').value,
-            due_date: dueValue ? new Date(`${dueValue}T12:00:00`).toISOString() : null,
+            due_date: dueDate ? dueDate.toISOString() : null,
         };
 
         try {
@@ -441,6 +508,7 @@ class ProductivityDashboard {
             this.closeModal();
             this.toast(wasEditing ? 'Задача обновлена' : 'Задача создана', 'success');
             await Promise.all([this.loadStats(), this.loadTasks(), this.loadDashboard()]);
+            this.checkTaskDeadlines();
         } catch (error) {
             this.toast(error.message, 'error');
         }
@@ -1032,10 +1100,14 @@ class ProductivityDashboard {
     setTaskDateBounds() {
         const input = document.getElementById('taskDueDate');
         if (!input) return;
-        const today = this.todayDateValue();
-        input.min = today;
+        const now = new Date();
+        now.setSeconds(0, 0);
+        const minValue = this.localDateTimeInputValue(now);
+        input.min = minValue;
         if (!input.value) {
-            input.value = today;
+            const defaultDue = new Date(now);
+            defaultDue.setHours(defaultDue.getHours() + 1);
+            input.value = this.localDateTimeInputValue(defaultDue);
         }
     }
 
@@ -1100,6 +1172,18 @@ class ProductivityDashboard {
         return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short' }).format(date);
     }
 
+    formatDateTime(value) {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '-';
+        return new Intl.DateTimeFormat('ru-RU', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(date);
+    }
+
     shortDay(value) {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value || '').slice(5);
@@ -1140,12 +1224,18 @@ class ProductivityDashboard {
     }
 
     taskDateValue(value) {
-        const today = this.todayDateValue();
-        if (!value) return today;
+        const now = new Date();
+        now.setSeconds(0, 0);
+        const minValue = this.localDateTimeInputValue(now);
+        if (!value) {
+            const defaultDue = new Date(now);
+            defaultDue.setHours(defaultDue.getHours() + 1);
+            return this.localDateTimeInputValue(defaultDue);
+        }
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return today;
-        const candidate = this.dateInputValue(date);
-        return candidate < today ? today : candidate;
+        if (Number.isNaN(date.getTime())) return minValue;
+        const candidate = this.localDateTimeInputValue(date);
+        return candidate < minValue ? minValue : candidate;
     }
 
     clockShort(value) {

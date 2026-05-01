@@ -223,9 +223,5 @@ func validateTaskUpdate(task *models.TaskUpdate) error {
 }
 
 func dueDateIsPast(dueDate time.Time) bool {
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	due := dueDate.In(now.Location())
-	dueDay := time.Date(due.Year(), due.Month(), due.Day(), 0, 0, 0, 0, now.Location())
-	return dueDay.Before(today)
+	return dueDate.Before(time.Now().Add(-1 * time.Minute))
 }

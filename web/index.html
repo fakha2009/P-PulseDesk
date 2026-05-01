@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseDesk - вход</title>
+    <meta name="description" content="Вход и регистрация в PulseDesk.">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="api-base-url" content="">
+    <script src="config.js"></script>
+    <script src="api-config.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body class="auth-body">
+    <main class="auth-shell">
+        <section class="auth-panel" aria-labelledby="authTitle">
+            <div class="auth-brand">
+                <span class="brand-mark" aria-hidden="true"><img src="assets/logo.png" alt="" onerror="this.remove(); this.parentElement.classList.add('fallback-logo')"><span>P</span></span>
+                <div>
+                    <strong>PulseDesk</strong>
+                    <span>задачи, привычки и сон</span>
+                </div>
+                <button class="icon-button" type="button" id="authThemeToggle" aria-label="Переключить тему">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <div class="auth-copy">
+                <h1 id="authTitle">Личный dashboard без шума</h1>
+                <p>Войдите, чтобы продолжить работу со своими задачами, привычками и режимом сна.</p>
+            </div>
+
+            <div class="auth-tabs" role="tablist" aria-label="Авторизация">
+                <button class="auth-tab active" type="button" id="loginTab" data-auth-tab="login">Вход</button>
+                <button class="auth-tab" type="button" id="registerTab" data-auth-tab="register">Регистрация</button>
+            </div>
+
+            <section class="auth-form active" id="loginForm" aria-labelledby="loginTab">
+                <form id="loginFormElement">
+                    <label for="loginEmail">Email</label>
+                    <div class="input-shell">
+                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                        <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+                    </div>
+
+                    <label for="loginPassword">Пароль</label>
+                    <div class="input-shell">
+                        <i class="fas fa-lock" aria-hidden="true"></i>
+                        <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+                        <button class="password-toggle" type="button" data-target="loginPassword" aria-label="Показать пароль">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" type="submit">
+                        <span class="btn-text">Войти</span>
+                        <span class="btn-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Вход...</span>
+                    </button>
+                </form>
+            </section>
+
+            <section class="auth-form" id="registerForm" aria-labelledby="registerTab">
+                <form id="registerFormElement">
+                    <label for="registerName">Имя</label>
+                    <div class="input-shell">
+                        <i class="fas fa-user" aria-hidden="true"></i>
+                        <input id="registerName" name="name" type="text" autocomplete="name" placeholder="Ваше имя" required>
+                    </div>
+
+                    <label for="registerEmail">Email</label>
+                    <div class="input-shell">
+                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                        <input id="registerEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+                    </div>
+
+                    <label for="registerPassword">Пароль</label>
+                    <div class="input-shell">
+                        <i class="fas fa-lock" aria-hidden="true"></i>
+                        <input id="registerPassword" name="password" type="password" autocomplete="new-password" placeholder="••••••••" required>
+                        <button class="password-toggle" type="button" data-target="registerPassword" aria-label="Показать пароль">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <ul class="password-rules" aria-label="Требования к паролю">
+                        <li data-rule="length"><i class="fas fa-circle" aria-hidden="true"></i> 8+ символов</li>
+                        <li data-rule="uppercase"><i class="fas fa-circle" aria-hidden="true"></i> заглавная буква</li>
+                        <li data-rule="lowercase"><i class="fas fa-circle" aria-hidden="true"></i> строчная буква</li>
+                        <li data-rule="number"><i class="fas fa-circle" aria-hidden="true"></i> цифра</li>
+                    </ul>
+
+                    <label for="confirmPassword">Повторите пароль</label>
+                    <div class="input-shell">
+                        <i class="fas fa-lock" aria-hidden="true"></i>
+                        <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" placeholder="••••••••" required>
+                        <button class="password-toggle" type="button" data-target="confirmPassword" aria-label="Показать пароль">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" type="submit">
+                        <span class="btn-text">Создать аккаунт</span>
+                        <span class="btn-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Создание...</span>
+                    </button>
+                </form>
+            </section>
+        </section>
+    </main>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+    <script src="auth.js"></script>
+</body>
+</html>

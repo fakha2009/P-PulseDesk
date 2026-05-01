@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "build": "cd web && npm run build"
+  },
+  "devDependencies": {}
+}

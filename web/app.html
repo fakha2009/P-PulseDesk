@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseDesk - productivity dashboard</title>
+    <meta name="description" content="Личный productivity dashboard для задач, привычек и режима сна.">
+    <meta name="theme-color" content="#4f46e5">
+    <script>
+        if (window.location.protocol !== 'file:' && !localStorage.getItem('token')) {
+            window.location.replace('/auth');
+        }
+    </script>
+    <meta name="api-base-url" content="">
+    <script src="config.js"></script>
+    <script src="api-config.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar" aria-label="Основная навигация">
+            <div class="brand">
+                <span class="brand-mark" aria-hidden="true"><img src="assets/logo.png" alt="" onerror="this.remove(); this.parentElement.classList.add('fallback-logo')"><span>P</span></span>
+                <div>
+                    <strong>PulseDesk</strong>
+                    <span>личная система</span>
+                </div>
+            </div>
+
+            <nav class="side-nav">
+                <button class="nav-link active" type="button" data-page="dashboard">
+                    <i class="fas fa-chart-pie" aria-hidden="true"></i>
+                    <span>Задачи</span>
+                </button>
+                <button class="nav-link" type="button" data-page="tasks">
+                    <i class="fas fa-list-check" aria-hidden="true"></i>
+                    <span>Задачи</span>
+                </button>
+                <button class="nav-link" type="button" data-page="habits">
+                    <i class="fas fa-repeat" aria-hidden="true"></i>
+                    <span>Привычки</span>
+                </button>
+                <button class="nav-link" type="button" data-page="sleep">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                    <span>Сон</span>
+                </button>
+                <button class="nav-link" type="button" data-page="profile">
+                    <i class="fas fa-user-gear" aria-hidden="true"></i>
+                    <span>Профиль</span>
+                </button>
+                <button class="nav-link admin-only hidden" type="button" data-page="admin">
+                    <i class="fas fa-shield-halved" aria-hidden="true"></i>
+                    <span>Admin</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="theme-switch" type="button" id="themeToggle" aria-label="Переключить тему">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                    <span>Тема</span>
+                </button>
+                <button class="ghost-button" type="button" id="sidebarLogout">
+                    <i class="fas fa-arrow-right-from-bracket" aria-hidden="true"></i>
+                    <span>Выйти</span>
+                </button>
+            </div>
+        </aside>
+
+        <header class="mobile-header">
+            <button class="icon-button" type="button" id="mobileMenuButton" aria-label="Открыть меню">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="mobile-brand"><span class="brand-mark mini" aria-hidden="true"><img src="assets/logo.png" alt="" onerror="this.remove(); this.parentElement.classList.add('fallback-logo')"><span>P</span></span>PulseDesk</div>
+            <button class="icon-button" type="button" id="mobileThemeToggle" aria-label="Переключить тему">
+                <i class="fas fa-moon" aria-hidden="true"></i>
+            </button>
+        </header>
+
+        <main class="content" id="mainContent">
+            <section class="page active" id="dashboard-page" aria-labelledby="dashboard-title">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">сегодня</p>
+                        <h1 id="dashboard-title">Добро пожаловать, <span class="user-name">пользователь</span></h1>
+                        <p>Задачи, привычки и сон в одном рабочем ритме.</p>
+                    </div>
+                    <button class="btn btn-primary" type="button" data-page-jump="tasks">
+                        <i class="fas fa-plus" aria-hidden="true"></i>
+                        Новая задача
+                    </button>
+                </div>
+
+                <div class="hero-grid">
+                    <article class="score-panel">
+                        <div>
+                            <span class="panel-label">Productivity score</span>
+                            <strong id="productivityScore">0%</strong>
+                        </div>
+                        <div class="score-ring" aria-hidden="true">
+                            <svg viewBox="0 0 120 120">
+                                <circle cx="60" cy="60" r="52"></circle>
+                                <circle id="scoreRing" cx="60" cy="60" r="52"></circle>
+                            </svg>
+                        </div>
+                        <p id="scoreCaption">Расчёт активности...</p>
+                    </article>
+
+                    <article class="sleep-summary-card">
+                        <div class="card-top">
+                            <span class="panel-label">Сон</span>
+                            <button class="text-button" type="button" data-page-jump="sleep">Открыть</button>
+                        </div>
+                        <div class="sleep-summary-main">
+                            <span id="dashboardSleepDuration">0ч 00м</span>
+                            <small>цель <b id="dashboardSleepTarget">0ч 00м</b></small>
+                        </div>
+                        <div class="progress-track" aria-label="Прогресс сна">
+                            <span id="dashboardSleepProgress"></span>
+                        </div>
+                        <p id="dashboardSleepStatus">Нет данных за сегодня</p>
+                    </article>
+                </div>
+
+                <div class="stats-grid">
+                    <article class="metric-card">
+                        <span><i class="fas fa-list-check" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="totalTasks">0</strong>
+                            <small>всего задач</small>
+                        </div>
+                    </article>
+                    <article class="metric-card">
+                        <span><i class="fas fa-check" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="completedTasks">0</strong>
+                            <small>выполнено</small>
+                        </div>
+                    </article>
+                    <article class="metric-card">
+                        <span><i class="fas fa-fire" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="bestStreak">0</strong>
+                            <small>лучший streak</small>
+                        </div>
+                    </article>
+                    <article class="metric-card">
+                        <span><i class="fas fa-bed" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="weeklySleepAverage">0ч</strong>
+                            <small>средний сон</small>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid">
+                    <section class="surface-section">
+                        <div class="section-head">
+                            <h2>Задачи на сегодня</h2>
+                            <button class="text-button" type="button" data-page-jump="tasks">Все задачи</button>
+                        </div>
+                        <div class="stack-list" id="dashboardTasks"></div>
+                    </section>
+
+                    <section class="surface-section">
+                        <div class="section-head">
+                            <h2>Привычки</h2>
+                            <button class="text-button" type="button" data-page-jump="habits">Все привычки</button>
+                        </div>
+                        <div class="stack-list" id="dashboardHabits"></div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="page" id="tasks-page" aria-labelledby="tasks-title">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">фокус</p>
+                        <h1 id="tasks-title">Задачи</h1>
+                        <p>Планируйте, фильтруйте и закрывайте текущие дела.</p>
+                    </div>
+                    <button class="btn btn-primary" type="button" id="addTaskButton">
+                        <i class="fas fa-plus" aria-hidden="true"></i>
+                        Новая задача
+                    </button>
+                </div>
+
+                <div class="toolbar">
+                    <div class="segmented" role="group" aria-label="Фильтр задач">
+                        <button class="segment active" type="button" data-filter="all">Все</button>
+                        <button class="segment" type="button" data-filter="active">Активные</button>
+                        <button class="segment" type="button" data-filter="completed">Готовые</button>
+                        <button class="segment" type="button" data-filter="today">Сегодня</button>
+                        <button class="segment" type="button" data-filter="overdue">Просрочены</button>
+                    </div>
+                    <label class="search-field" for="taskSearch">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                        <input id="taskSearch" type="search" placeholder="Поиск задач">
+                    </label>
+                </div>
+
+                <div class="stack-list" id="tasksList"></div>
+            </section>
+
+            <section class="page" id="habits-page" aria-labelledby="habits-title">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">ритм</p>
+                        <h1 id="habits-title">Привычки</h1>
+                        <p>Создавайте ежедневные ритуалы и отслеживайте регулярность.</p>
+                    </div>
+                    <button class="btn btn-primary" type="button" id="addHabitButton">
+                        <i class="fas fa-plus" aria-hidden="true"></i>
+                        Новая привычка
+                    </button>
+                </div>
+
+                <div class="stack-list" id="habitsList"></div>
+            </section>
+
+            <section class="page" id="sleep-page" aria-labelledby="sleep-title">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">режим сна</p>
+                        <h1 id="sleep-title">Сон</h1>
+                        <p>Ведите записи, держите график и замечайте изменения.</p>
+                    </div>
+                </div>
+
+                <div class="sleep-layout">
+                    <section class="surface-section">
+                        <div class="section-head">
+                            <h2>Текущий режим</h2>
+                            <span class="quality-pill" id="sleepModeStatus">Загрузка</span>
+                        </div>
+                        <div class="sleep-current">
+                            <div>
+                                <small>Лечь</small>
+                                <strong id="currentBedTime">23:00</strong>
+                            </div>
+                            <div>
+                                <small>соблюдение</small>
+                                <strong id="currentWakeTime">07:00</strong>
+                            </div>
+                            <div>
+                                <small>Цель</small>
+                                <strong id="currentSleepTarget">8ч 00м</strong>
+                            </div>
+                        </div>
+                        <form class="compact-form" id="sleepSettingsForm">
+                            <label for="targetBedTime">Целевое время сна</label>
+                            <input id="targetBedTime" type="time" required>
+                            <label for="targetWakeTime">Целевое время пробуждения</label>
+                            <input id="targetWakeTime" type="time" required>
+                            <button class="btn btn-primary" type="submit">Сохранить режим</button>
+                        </form>
+                    </section>
+
+                    <section class="surface-section">
+                        <div class="section-head">
+                            <h2>Ежедневная отметка</h2>
+                            <button class="text-button hidden" type="button" id="cancelSleepEdit">Отменить</button>
+                        </div>
+                        <form class="compact-form" id="sleepLogForm">
+                            <label for="sleepDate">Дата сна</label>
+                            <input id="sleepDate" type="date" required>
+                            <label for="bedTime">Лёг спать</label>
+                            <input id="bedTime" type="datetime-local" required>
+                            <label for="wakeTime">Проснулся</label>
+                            <input id="wakeTime" type="datetime-local" required>
+                            <label for="sleepNote">Заметка</label>
+                            <textarea id="sleepNote" rows="3" placeholder="Например: без кофе после 16:00"></textarea>
+                            <button class="btn btn-primary" type="submit" id="sleepLogSubmit">Записать сон</button>
+                        </form>
+                    </section>
+                </div>
+
+                <div class="stats-grid sleep-stats-grid">
+                    <article class="metric-card">
+                        <span><i class="fas fa-chart-line" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="sleepAverage">0ч 00м</strong>
+                            <small>средняя длительность</small>
+                        </div>
+                    </article>
+                    <article class="metric-card">
+                        <span><i class="fas fa-award" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="sleepBestDay">нет</strong>
+                            <small>лучший день</small>
+                        </div>
+                    </article>
+                    <article class="metric-card">
+                        <span><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="sleepWorstDay">нет</strong>
+                            <small>худший день</small>
+                        </div>
+                    </article>
+                    <article class="metric-card">
+                        <span><i class="fas fa-calendar-check" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="sleepCompliantDays">0/7</strong>
+                            <small>дней после записи</small>
+                        </div>
+                    </article>
+                </div>
+
+                <section class="surface-section">
+                    <div class="section-head">
+                        <h2>Прогресс и рекомендации</h2>
+                        <span class="quality-pill" id="sleepQualityLabel">нет данных</span>
+                    </div>
+                    <div class="sleep-progress-panel">
+                        <div class="progress-track large" aria-label="Прогресс регулярности сна">
+                            <span id="sleepProgress"></span>
+                        </div>
+                        <p id="sleepRecommendation">Добавьте первую запись сна.</p>
+                    </div>
+                </section>
+
+                <section class="surface-section">
+                    <div class="section-head">
+                        <h2>Журнал сна</h2>
+                        <span id="sleepLogCount">0 записей</span>
+                    </div>
+                    <div class="stack-list" id="sleepLogsList"></div>
+                </section>
+            </section>
+
+            <section class="page" id="profile-page" aria-labelledby="profile-title">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">Аккаунт</p>
+                        <h1 id="profile-title">Профиль</h1>
+                        <p>Данные пользователя, безопасность и настройки темы.</p>
+                    </div>
+                </div>
+
+                <div class="profile-grid">
+                    <section class="surface-section profile-card">
+                        <div class="avatar" id="profileAvatar">U</div>
+                        <div>
+                            <h2 id="profileName">Пользователь</h2>
+                            <p id="profileEmail">email@example.com</p>
+                            <small>Дата регистрации: <span id="profileCreatedAt">-</span></small>
+                        </div>
+                        <button class="btn btn-secondary" type="button" id="profileLogout">
+                            <i class="fas fa-arrow-right-from-bracket" aria-hidden="true"></i>
+                            Logout
+                        </button>
+                    </section>
+
+                    <section class="surface-section">
+                        <div class="section-head">
+                            <h2>Личные данные</h2>
+                        </div>
+                        <form class="compact-form" id="profileNameForm">
+                            <label for="profileNameInput">Имя</label>
+                            <input id="profileNameInput" type="text" maxlength="120" required>
+                            <button class="btn btn-primary" type="submit">Сохранить имя</button>
+                        </form>
+                    </section>
+
+                    <section class="surface-section">
+                        <div class="section-head">
+                            <h2>Смена пароля</h2>
+                        </div>
+                        <form class="compact-form" id="profilePasswordForm">
+                            <input class="sr-only" id="passwordUsername" type="email" autocomplete="username" aria-label="Email аккаунта" readonly>
+                            <label for="currentPassword">Текущий пароль</label>
+                            <input id="currentPassword" type="password" autocomplete="current-password" required>
+                            <label for="newPassword">Новый пароль</label>
+                            <input id="newPassword" type="password" autocomplete="new-password" required>
+                            <label for="confirmNewPassword">Повторите пароль</label>
+                            <input id="confirmNewPassword" type="password" autocomplete="new-password" required>
+                            <button class="btn btn-primary" type="submit">Обновить пароль</button>
+                        </form>
+                    </section>
+
+                    <section class="surface-section">
+                        <div class="section-head">
+                            <h2>Тема</h2>
+                        </div>
+                        <div class="theme-choice" role="group" aria-label="Настройка темы">
+                            <button class="theme-option" type="button" data-theme-choice="light">
+                                <i class="fas fa-sun" aria-hidden="true"></i>
+                                Светлая
+                            </button>
+                            <button class="theme-option" type="button" data-theme-choice="dark">
+                                <i class="fas fa-moon" aria-hidden="true"></i>
+                                Темная
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="page" id="admin-page" aria-labelledby="admin-title">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">Admin</p>
+                        <h1 id="admin-title">Панель администратора</h1>
+                        <p>Обзор пользователей, активности и состояния данных PulseDesk.</p>
+                    </div>
+                    <button class="btn btn-secondary" type="button" id="refreshAdminButton">
+                        <i class="fas fa-rotate" aria-hidden="true"></i>
+                        Обновить
+                    </button>
+                </div>
+
+                <div class="stats-grid admin-stats-grid" id="adminStatsGrid"></div>
+
+                <section class="surface-section admin-activity-section">
+                    <div class="section-head">
+                        <h2>Активность за 7 дней</h2>
+                        <span id="adminActivityTotal">0 событий</span>
+                    </div>
+                    <div class="activity-bars" id="adminActivityBars"></div>
+                </section>
+
+                <section class="surface-section">
+                    <div class="section-head">
+                        <h2>Пользователи</h2>
+                        <span id="adminUserCount">0</span>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Имя</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Пользователь</th>
+                                    <th>Задачи</th>
+                                    <th>Привычки</th>
+                                    <th>Сон</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUsersTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+        </main>
+
+        <nav class="bottom-nav" aria-label="Мобильная навигация">
+            <button class="bottom-link active" type="button" data-page="dashboard" aria-label="Обзор"><i class="fas fa-chart-pie" aria-hidden="true"></i></button>
+            <button class="bottom-link" type="button" data-page="tasks" aria-label="Задачи"><i class="fas fa-list-check" aria-hidden="true"></i></button>
+            <button class="bottom-link" type="button" data-page="habits" aria-label="Привычки"><i class="fas fa-repeat" aria-hidden="true"></i></button>
+            <button class="bottom-link" type="button" data-page="sleep" aria-label="Сон"><i class="fas fa-moon" aria-hidden="true"></i></button>
+            <button class="bottom-link" type="button" data-page="profile" aria-label="Профиль"><i class="fas fa-user-gear" aria-hidden="true"></i></button>
+            <button class="bottom-link admin-only hidden" type="button" data-page="admin" aria-label="Admin"><i class="fas fa-shield-halved" aria-hidden="true"></i></button>
+        </nav>
+    </div>
+
+    <div class="modal-layer" id="modalLayer" aria-hidden="true">
+        <section class="modal" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="taskModalTitle">
+            <div class="modal-head">
+                <h2 id="taskModalTitle">Новая задача</h2>
+                <button class="icon-button" type="button" data-close-modal aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            </div>
+            <form class="compact-form" id="taskForm">
+                <label for="taskTitle">Название</label>
+                <input id="taskTitle" type="text" maxlength="200" required>
+                <label for="taskDescription">Описание</label>
+                <textarea id="taskDescription" rows="3"></textarea>
+                <label for="taskPriority">Приоритет</label>
+                <select id="taskPriority">
+                    <option value="low">Низкий</option>
+                    <option value="medium">Средний</option>
+                    <option value="high">Высокий</option>
+                </select>
+                <label for="taskDueDate">Срок</label>
+                <input id="taskDueDate" type="date">
+                <div class="form-actions">
+                    <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
+                    <button class="btn btn-primary" type="submit">Сохранить</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="modal" id="habitModal" role="dialog" aria-modal="true" aria-labelledby="habitModalTitle">
+            <div class="modal-head">
+                <h2 id="habitModalTitle">Новая привычка</h2>
+                <button class="icon-button" type="button" data-close-modal aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            </div>
+            <form class="compact-form" id="habitForm">
+                <label for="habitTitle">Название</label>
+                <input id="habitTitle" type="text" maxlength="100" required>
+                <label for="habitDescription">Описание</label>
+                <textarea id="habitDescription" rows="3"></textarea>
+                <label for="habitColor">Цвет</label>
+                <input id="habitColor" type="color" value="#4f46e5">
+                <div class="form-actions">
+                    <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
+                    <button class="btn btn-primary" type="submit">Сохранить</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="modal confirm-modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+            <div class="modal-head">
+                <h2 id="confirmTitle">Подтвердите действие</h2>
+                <button class="icon-button" type="button" data-close-modal aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            </div>
+            <p id="confirmMessage">Продолжить?</p>
+            <div class="form-actions">
+                <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
+                <button class="btn btn-danger" type="button" id="confirmAction">Удалить</button>
+            </div>
+        </section>
+    </div>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

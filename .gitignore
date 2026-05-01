@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+app.exe
+app.exe~
+*.log
+web/.vercel
+
+.vercel
+generate_token.go
+ChatGPT Image*.png

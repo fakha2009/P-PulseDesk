@@ -36,7 +36,7 @@
             <nav class="side-nav">
                 <button class="nav-link active" type="button" data-page="dashboard">
                     <i class="fas fa-chart-pie" aria-hidden="true"></i>
-                    <span>Задачи</span>
+                    <span>Обзор</span>
                 </button>
                 <button class="nav-link" type="button" data-page="tasks">
                     <i class="fas fa-list-check" aria-hidden="true"></i>
@@ -98,9 +98,11 @@
 
                 <div class="hero-grid">
                     <article class="score-panel">
-                        <div>
-                            <span class="panel-label">Productivity score</span>
+                        <div class="score-copy">
+                            <span class="panel-label">Индекс дня</span>
                             <strong id="productivityScore">0%</strong>
+                            <p id="scoreCaption">Расчёт активности...</p>
+                            <small id="scoreBreakdown">Задачи 0% · сон нет данных</small>
                         </div>
                         <div class="score-ring" aria-hidden="true">
                             <svg viewBox="0 0 120 120">
@@ -108,7 +110,6 @@
                                 <circle id="scoreRing" cx="60" cy="60" r="52"></circle>
                             </svg>
                         </div>
-                        <p id="scoreCaption">Расчёт активности...</p>
                     </article>
 
                     <article class="sleep-summary-card">
@@ -128,6 +129,13 @@
                 </div>
 
                 <div class="stats-grid">
+                    <article class="metric-card">
+                        <span><i class="fas fa-clock" aria-hidden="true"></i></span>
+                        <div>
+                            <strong id="currentTime">--:--</strong>
+                            <small id="currentDate">сегодня</small>
+                        </div>
+                    </article>
                     <article class="metric-card">
                         <span><i class="fas fa-list-check" aria-hidden="true"></i></span>
                         <div>

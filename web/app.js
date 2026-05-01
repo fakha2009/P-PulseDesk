@@ -7,6 +7,7 @@ class ProductivityDashboard {
         this.editingHabit = null;
         this.editingSleepLog = null;
         this.searchTimer = null;
+        this.clockTimer = null;
         this.confirmResolver = null;
         this.init();
     }
@@ -20,6 +21,7 @@ class ProductivityDashboard {
         }
 
         this.bindEvents();
+        this.startClock();
         this.setDefaultSleepInputs();
         this.setTaskDateBounds();
 
@@ -147,6 +149,27 @@ class ProductivityDashboard {
         await this.loadDashboard();
     }
 
+    startClock() {
+        this.renderClock();
+        if (this.clockTimer) {
+            clearInterval(this.clockTimer);
+        }
+        this.clockTimer = setInterval(() => this.renderClock(), 30000);
+    }
+
+    renderClock() {
+        const now = new Date();
+        this.setText('currentTime', new Intl.DateTimeFormat('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(now));
+        this.setText('currentDate', new Intl.DateTimeFormat('ru-RU', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'long',
+        }).format(now));
+    }
+
     async loadPageData() {
         if (this.currentPage === 'dashboard') {
             await this.loadDashboard();
@@ -230,7 +253,11 @@ class ProductivityDashboard {
             container.innerHTML = this.emptyState('fa-clipboard-check', 'На сегодня задач нет', 'Можно добавить новую задачу или перейти к привычкам.');
             return;
         }
-        container.innerHTML = tasks.slice(0, 5).map((task) => this.taskTemplate(task, true)).join('');
+        container.innerHTML = `
+            <div class="dashboard-table">
+                ${tasks.slice(0, 5).map((task) => this.dashboardTaskRow(task)).join('')}
+            </div>
+        `;
     }
 
     renderDashboardHabits(habits) {
@@ -240,23 +267,67 @@ class ProductivityDashboard {
             container.innerHTML = this.emptyState('fa-repeat', 'Привычек пока нет', 'Создайте первый ежедневный ритуал.');
             return;
         }
-        container.innerHTML = habits.map((habit) => this.habitTemplate(habit, true)).join('');
+        container.innerHTML = `
+            <div class="dashboard-table">
+                ${habits.map((habit) => this.dashboardHabitRow(habit)).join('')}
+            </div>
+        `;
     }
 
     renderProductivityScore() {
         const taskScore = this.stats?.productivity_score ?? 0;
-        const sleepScore = this.sleepStats ? this.sleepScore(this.sleepStats) : 0;
-        const score = Math.round((taskScore + sleepScore) / (this.sleepStats ? 2 : 1));
+        const hasSleepData = Boolean(this.sleepStats?.days_logged);
+        const sleepScore = hasSleepData ? this.sleepScore(this.sleepStats) : null;
+        const score = sleepScore === null ? taskScore : Math.round((taskScore + sleepScore) / 2);
         const clamped = Math.max(0, Math.min(100, score));
         const circle = document.getElementById('scoreRing');
         const circumference = 2 * Math.PI * 52;
 
         this.setText('productivityScore', `${clamped}%`);
-        this.setText('scoreCaption', clamped >= 75 ? 'Стабильный день' : clamped >= 45 ? 'Есть пространство для улучшения' : 'Начните с одного небольшого действия');
+        this.setText('scoreCaption', clamped >= 75 ? 'День идёт уверенно' : clamped >= 45 ? 'Нормальный темп, есть запас' : 'Начните с одного короткого действия');
+        this.setText('scoreBreakdown', sleepScore === null
+            ? `Задачи ${Math.round(taskScore)}% · сон пока без записей`
+            : `Задачи ${Math.round(taskScore)}% · сон ${sleepScore}% · среднее ${clamped}%`);
         if (circle) {
             circle.style.strokeDasharray = `${circumference}`;
             circle.style.strokeDashoffset = `${circumference - (clamped / 100) * circumference}`;
         }
+    }
+
+    dashboardTaskRow(task) {
+        const priorityText = { low: 'Низкий', medium: 'Средний', high: 'Высокий' }[task.priority] || 'Средний';
+        const due = task.due_date ? this.formatDate(task.due_date) : 'без срока';
+        return `
+            <article class="dashboard-row task-dashboard-row ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                <button class="check-button mini ${task.completed ? 'checked' : ''}" type="button" data-action="task-toggle" data-id="${task.id}" aria-label="Изменить статус задачи">
+                    <i class="fas fa-check" aria-hidden="true"></i>
+                </button>
+                <div class="dashboard-cell main-cell">
+                    <strong>${this.escape(task.title)}</strong>
+                    ${task.description ? `<small>${this.escape(task.description)}</small>` : ''}
+                </div>
+                <div class="dashboard-cell"><span class="priority priority-${task.priority}">${priorityText}</span></div>
+                <div class="dashboard-cell muted-cell"><i class="fas fa-calendar" aria-hidden="true"></i> ${due}</div>
+            </article>
+        `;
+    }
+
+    dashboardHabitRow(habit) {
+        const color = this.safeColor(habit.color);
+        return `
+            <article class="dashboard-row habit-dashboard-row" data-id="${habit.id}">
+                <span class="habit-dot" style="--habit-color: ${color}"></span>
+                <div class="dashboard-cell main-cell">
+                    <strong>${this.escape(habit.title)}</strong>
+                    ${habit.description ? `<small>${this.escape(habit.description)}</small>` : ''}
+                </div>
+                <div class="dashboard-cell muted-cell"><i class="fas fa-fire" aria-hidden="true"></i> ${habit.streak || 0} дней</div>
+                <div class="dashboard-cell muted-cell">${Math.round(habit.weekly_rate || 0)}% за неделю</div>
+                <button class="btn ${habit.checked_today ? 'btn-secondary' : 'btn-primary'} compact-btn" type="button" data-action="habit-toggle" data-id="${habit.id}">
+                    ${habit.checked_today ? 'Отмечено' : 'Отметить'}
+                </button>
+            </article>
+        `;
     }
 
     sleepScore(stats) {

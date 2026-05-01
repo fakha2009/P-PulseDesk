@@ -118,7 +118,7 @@ func (s *SleepService) GetStats(userID int64) (*models.SleepStats, error) {
 		Week:                  week,
 		Settings:              *settings,
 		Status:                "empty",
-		Recommendation:        "Р”РѕР±Р°РІСЊС‚Рµ РїРµСЂРІСѓСЋ Р·Р°РїРёСЃСЊ СЃРЅР°, С‡С‚РѕР±С‹ СѓРІРёРґРµС‚СЊ СЂРµРєРѕРјРµРЅРґР°С†РёРё.",
+		Recommendation:        "Добавьте первую запись сна, чтобы увидеть рекомендации.",
 	}
 
 	if today, err := s.repo.GetTodayLog(userID, now); err == nil {
@@ -281,15 +281,15 @@ func sleepLogCompliant(log models.SleepLog, settings models.SleepSettings, targe
 func buildSleepRecommendation(stats *models.SleepStats, targetDuration int) string {
 	switch {
 	case stats.AverageDurationMinutes < 6*60:
-		return "РќРµРґРѕСЃС‹Рї Р·Р° РЅРµРґРµР»СЋ. РЎРµРіРѕРґРЅСЏ Р»СѓС‡С€Рµ Р»РµС‡СЊ СЂР°РЅСЊС€Рµ."
+		return "Недосып за неделю. Сегодня лучше лечь раньше."
 	case stats.AverageDurationMinutes < targetDuration-durationTolerance:
-		return "РЎРµРіРѕРґРЅСЏ Р»СѓС‡С€Рµ Р»РµС‡СЊ СЂР°РЅСЊС€Рµ, С‡С‚РѕР±С‹ РІРµСЂРЅСѓС‚СЊСЃСЏ Рє С†РµР»РµРІРѕРјСѓ СЂРµР¶РёРјСѓ."
+		return "Сегодня лучше лечь раньше, чтобы вернуться к целевому режиму."
 	case stats.CompliantDays >= 5:
-		return "Р РµР¶РёРј СЃС‚Р°Р±РёР»СЊРЅС‹Р№. РЎРѕС…СЂР°РЅСЏР№С‚Рµ С‚РµРєСѓС‰РёР№ РіСЂР°С„РёРє."
+		return "Режим стабильный. Сохраняйте текущий график."
 	case stats.Today != nil && stats.Today.Quality == models.SleepQualityPoor:
-		return "РЎРµРіРѕРґРЅСЏ Р»СѓС‡С€Рµ Р»РµС‡СЊ СЂР°РЅСЊС€Рµ: РїРѕСЃР»РµРґРЅСЏСЏ РЅРѕС‡СЊ Р±С‹Р»Р° РєРѕСЂРѕС‚РєРѕР№."
+		return "Сегодня лучше лечь раньше: последняя ночь была короткой."
 	default:
-		return "Р РµР¶РёРј РїРѕС‡С‚Рё СЃС‚Р°Р±РёР»РµРЅ. Р”РµСЂР¶РёС‚Рµ РѕРґРёРЅР°РєРѕРІРѕРµ РІСЂРµРјСЏ СЃРЅР° Рё РїРѕРґСЉРµРјР°."
+		return "Режим почти стабилен. Держите одинаковое время сна и подъема."
 	}
 }
 

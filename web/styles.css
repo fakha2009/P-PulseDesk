@@ -299,6 +299,10 @@ select:focus-visible {
     gap: 20px;
 }
 
+.score-copy {
+    min-width: 0;
+}
+
 .score-panel strong {
     display: block;
     font-size: clamp(3rem, 8vw, 5.4rem);
@@ -308,6 +312,13 @@ select:focus-visible {
 .score-panel p {
     margin: 10px 0 0;
     color: var(--muted);
+}
+
+.score-panel small {
+    display: block;
+    margin-top: 10px;
+    color: var(--muted);
+    font-weight: 700;
 }
 
 .score-ring {
@@ -384,7 +395,7 @@ select:focus-visible {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 16px;
 }
@@ -442,6 +453,65 @@ select:focus-visible {
 .stack-list {
     display: grid;
     gap: 10px;
+}
+
+.dashboard-table {
+    display: grid;
+    gap: 10px;
+}
+
+.dashboard-row {
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-muted);
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr) auto auto auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.task-dashboard-row {
+    grid-template-columns: auto minmax(180px, 1fr) auto auto;
+}
+
+.dashboard-row.completed {
+    opacity: 0.68;
+}
+
+.dashboard-row.completed strong {
+    text-decoration: line-through;
+}
+
+.dashboard-cell {
+    min-width: 0;
+    color: var(--text);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.dashboard-cell strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard-cell small {
+    display: block;
+    margin-top: 3px;
+    max-width: 36ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--muted);
+}
+
+.main-cell {
+    white-space: normal;
+}
+
+.muted-cell {
+    color: var(--muted);
 }
 
 .list-item {
@@ -534,6 +604,11 @@ select:focus-visible {
 
 .check-button {
     flex: 0 0 auto;
+}
+
+.check-button.mini {
+    width: 38px;
+    height: 38px;
 }
 
 .check-button i {
@@ -1272,6 +1347,14 @@ select:focus-visible {
     .profile-grid {
         grid-template-columns: 1fr;
     }
+
+    .dashboard-row {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .dashboard-row .dashboard-cell:nth-last-child(2) {
+        display: none;
+    }
 }
 
 @media (max-width: 760px) {
@@ -1352,6 +1435,20 @@ select:focus-visible {
     .list-item {
         align-items: flex-start;
         flex-wrap: wrap;
+    }
+
+    .dashboard-row {
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: flex-start;
+    }
+
+    .dashboard-row .dashboard-cell:not(.main-cell) {
+        display: none;
+    }
+
+    .dashboard-row .compact-btn {
+        grid-column: 2;
+        width: max-content;
     }
 
     .item-actions {

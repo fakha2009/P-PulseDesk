@@ -4,7 +4,7 @@
 
 ### Production-ready productivity platform
 
-**Tasks · Habits · Sleep Tracking · Admin Analytics · PostgreSQL · Go API**
+**Tasks · Calendar · Habits · Sleep Tracking · Admin Analytics · PostgreSQL · Go API**
 
 <br />
 
@@ -16,7 +16,7 @@
 
 <br />
 
-**PulseDesk** is a complete personal productivity system with real backend architecture, PostgreSQL persistence, secure authentication, admin analytics, and a responsive frontend.
+**PulseDesk** is a complete personal productivity system with real backend architecture, PostgreSQL persistence, secure authentication, calendar planning, focus tools, admin analytics, and a responsive frontend.
 
 <br />
 
@@ -38,7 +38,11 @@ The application includes:
 
 | Module | Description |
 |---|---|
-| ✅ Tasks | Create, edit, delete, search, filter, prioritize, and complete tasks |
+| ✅ Tasks | Create, edit, delete, search, filter, prioritize, sort, and complete tasks |
+| 📅 Calendar | Plan tasks by day with due dates, due times, and upcoming deadlines |
+| 🧩 Checklists | Add subtasks/checklist items inside every task |
+| 🔁 Recurring Tasks | Daily, weekly, and monthly repeating tasks |
+| ⏱️ Focus Tools | Pomodoro timer per task and deadline reminders |
 | 🔁 Habits | Track daily habits, streaks, weekly rate, monthly rate, and dashboard previews |
 | 😴 Sleep | Configure sleep goals, log sleep, calculate duration, quality, and weekly statistics |
 | 🔐 Authentication | Register, login, JWT sessions, password hashing, profile update, password change |
@@ -57,6 +61,10 @@ The application includes:
 | 🔐 Secure auth | bcrypt password hashes, JWT sessions, protected routes |
 | 🧑‍💼 Role-based access | User/admin roles with middleware-level protection |
 | 📊 Admin analytics | Real PostgreSQL-backed project metrics |
+| 📅 Calendar planning | Dedicated calendar view backed by real task deadlines |
+| 🧩 Task checklists | PostgreSQL-backed subtasks with completion state |
+| 🧲 Drag-and-drop ordering | Persisted task ordering through backend reorder API |
+| ⏱️ Focus workflow | Pomodoro timer and browser/PWA reminders |
 | 🔁 Idempotent seed | Migrations and seed can run repeatedly without duplicate demo users |
 | ☁️ Vercel-ready | Static frontend with serverless Go API via `api/index.go` |
 | 🧱 Clean architecture | Handlers, services, repositories, middleware, models, utils |
@@ -104,14 +112,48 @@ The task module is designed for daily productivity usage.
 
 | Feature | Description |
 |---|---|
-| Create tasks | Add new tasks with title, description, priority, and due date |
+| Create tasks | Add new tasks with title, description, priority, due date, and due time |
 | Edit tasks | Update task content and metadata |
 | Delete tasks | Remove tasks safely |
 | Toggle completion | Mark tasks as complete or active |
-| Filters | Active, completed, today, overdue |
+| Quick filters | All, active, completed, today, tomorrow, this week, overdue |
 | Search | Search by title and description |
 | Priority levels | Low, medium, high |
+| Recurring tasks | Repeat daily, weekly, or monthly |
+| Checklists | Add and complete subtasks inside a task |
+| Drag-and-drop | Reorder tasks and persist the order in PostgreSQL |
+| Deadline reminders | Browser/PWA reminder close to the due time |
+| Pomodoro | Start a 25-minute focus timer from any task |
 | Dashboard cards | Counters and quick task insights |
+
+---
+
+### 📅 Calendar
+
+The calendar view turns tasks into an actual plan instead of a flat list.
+
+| Feature | Description |
+|---|---|
+| 14-day overview | Shows upcoming task days at a glance |
+| Time-aware deadlines | Displays each task with local due time |
+| Inline task access | Click a task from the calendar to edit it |
+| Today highlight | Current day is visually marked |
+| Real backend data | Calendar reads the same PostgreSQL-backed tasks API |
+
+---
+
+### ⏱️ Focus And Notifications
+
+PulseDesk includes lightweight focus tooling directly in the task workflow.
+
+| Feature | Description |
+|---|---|
+| Pomodoro timer | 25-minute task timer with live document title countdown |
+| Task reminder | Notification near the deadline when permission is granted |
+| Service worker | Handles notification clicks and routes back into the app |
+| PWA-friendly | Works as a browser/PWA reminder layer without exposing secrets |
+
+> Full server-originated Web Push while every tab is closed requires a dedicated VAPID/subscription sender. PulseDesk already includes the service worker foundation for the client side.
 
 ---
 
@@ -215,6 +257,7 @@ PulseDesk uses PostgreSQL tables for:
 |---|---|
 | `users` | Accounts, roles, password hashes |
 | `tasks` | User tasks |
+| `task_subtasks` | Checklist items inside tasks |
 | `habits` | User habits |
 | `habit_checks` | Daily habit completion records |
 | `sleep_settings` | User sleep goals |
@@ -230,6 +273,7 @@ PostgreSQL-specific implementation details:
 | `ON CONFLICT` | Safe idempotent inserts |
 | `INSERT ... RETURNING id` | Clean insert flow |
 | `CREATE INDEX IF NOT EXISTS` | Repeatable migrations |
+| `ON DELETE CASCADE` | Deletes task checklists with their parent task |
 
 Supabase pooler compatibility is handled through pgx simple protocol mode when needed.
 
@@ -330,10 +374,24 @@ Seed data is idempotent and stores passwords as bcrypt hashes.
 |---|---|---|
 | `GET` | `/api/tasks` | List tasks |
 | `POST` | `/api/tasks` | Create task |
+| `PATCH` | `/api/tasks/reorder` | Persist drag-and-drop task order |
 | `GET` | `/api/tasks/:id` | Get task |
 | `PUT` | `/api/tasks/:id` | Update task |
 | `DELETE` | `/api/tasks/:id` | Delete task |
 | `PATCH` | `/api/tasks/:id/toggle` | Toggle completion |
+| `PATCH` | `/api/tasks/:id/subtasks/:subtaskID/toggle` | Toggle checklist item |
+
+Task filters support:
+
+```text
+?status=all
+?status=active
+?status=completed
+?status=today
+?status=tomorrow
+?status=week
+?status=overdue
+```
 
 ### Habits
 
@@ -487,6 +545,7 @@ Frontend syntax checks:
 node --check web/app.js
 node --check web/auth.js
 node --check web/api-config.js
+node --check web/sw.js
 ```
 
 Smoke checks used during deployment:
@@ -498,11 +557,16 @@ Smoke checks used during deployment:
 | Login | OK |
 | `/api/auth/me` | Returns safe user data |
 | Create/delete task | OK |
+| Recurring task with checklist | OK |
+| Toggle checklist item | OK |
+| Drag-and-drop reorder API | OK |
+| Calendar/app service worker files | OK |
 | Regular user admin access | `403 Forbidden` |
 | Admin login | OK |
 | Admin stats | OK |
 | Auth/app pages | `200 OK` |
 | Frontend files | Correct UTF-8 |
+| Service worker syntax | OK |
 
 ---
 
@@ -532,6 +596,7 @@ Smoke checks used during deployment:
 | PostgreSQL driver | `github.com/jackc/pgx/v5/stdlib` |
 | Auth | JWT + bcrypt |
 | Frontend | Static HTML/CSS/JS |
+| PWA layer | Service Worker |
 | Deployment | Vercel |
 | Architecture | Handler → Service → Repository |
 
@@ -551,6 +616,12 @@ PulseDesk is compact, but it handles the boring production details many demo app
 - secret isolation
 - smoke testing
 - PostgreSQL-backed analytics
+- time-aware calendar planning
+- recurring tasks
+- task checklists
+- drag-and-drop ordering
+- Pomodoro focus timer
+- service-worker notification handling
 
 It is built like a real application, not a throwaway prototype.
 

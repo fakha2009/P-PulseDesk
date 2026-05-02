@@ -17,7 +17,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 func (r *UserRepository) Create(name, email, passwordHash string) (*models.User, error) {
 	var id int64
 	err := r.db.QueryRow(
-		"INSERT INTO users (name, email, password_hash, role, created_at, updated_at) VALUES ($1, $2, $3, 'user', NOW(), NOW()) RETURNING id",
+		"INSERT INTO users (name, email, password_hash, role, theme, created_at, updated_at) VALUES ($1, $2, $3, 'user', 'dark', NOW(), NOW()) RETURNING id",
 		name, email, passwordHash,
 	).Scan(&id)
 	if err != nil {
@@ -30,9 +30,9 @@ func (r *UserRepository) Create(name, email, passwordHash string) (*models.User,
 func (r *UserRepository) GetByID(id int64) (*models.User, error) {
 	var user models.User
 	err := r.db.QueryRow(
-		"SELECT id, name, email, role, created_at, updated_at FROM users WHERE id = $1",
+		"SELECT id, name, email, role, theme, created_at, updated_at FROM users WHERE id = $1",
 		id,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -43,9 +43,9 @@ func (r *UserRepository) GetByID(id int64) (*models.User, error) {
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	var user models.User
 	err := r.db.QueryRow(
-		"SELECT id, name, email, role, password_hash, created_at, updated_at FROM users WHERE email = $1",
+		"SELECT id, name, email, role, theme, password_hash, created_at, updated_at FROM users WHERE email = $1",
 		email,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +56,9 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 func (r *UserRepository) GetWithPasswordByID(id int64) (*models.User, error) {
 	var user models.User
 	err := r.db.QueryRow(
-		"SELECT id, name, email, role, password_hash, created_at, updated_at FROM users WHERE id = $1",
+		"SELECT id, name, email, role, theme, password_hash, created_at, updated_at FROM users WHERE id = $1",
 		id,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +84,18 @@ func (r *UserRepository) UpdatePassword(id int64, passwordHash string) error {
 		passwordHash, id,
 	)
 	return err
+}
+
+func (r *UserRepository) UpdateTheme(id int64, theme string) (*models.User, error) {
+	_, err := r.db.Exec(
+		"UPDATE users SET theme = $1, updated_at = NOW() WHERE id = $2",
+		theme, id,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.GetByID(id)
 }
 
 func (r *UserRepository) Delete(id int64) error {

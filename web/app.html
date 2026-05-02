@@ -377,8 +377,8 @@
                     </div>
                 </div>
 
-                <div class="profile-grid">
-                    <section class="surface-section profile-card">
+                <div class="profile-grid profile-layout">
+                    <section class="surface-section profile-card profile-hero-card">
                         <div class="profile-main">
                             <div class="avatar" id="profileAvatar">U</div>
                             <div class="profile-copy">
@@ -396,20 +396,23 @@
                         </button>
                     </section>
 
-                    <section class="surface-section">
+                    <section class="surface-section account-panel">
                         <div class="section-head">
                             <h2>Личные данные</h2>
+                            <span>Аккаунт</span>
                         </div>
                         <form class="compact-form" id="profileNameForm">
                             <label for="profileNameInput">Имя</label>
                             <input id="profileNameInput" type="text" maxlength="120" required>
-                            <button class="btn btn-primary" type="submit">Сохранить имя</button>
+                            <p class="form-message" id="profileNameMessage" role="status" aria-live="polite"></p>
+                            <button class="btn btn-primary" type="submit" id="profileNameSubmit">Сохранить имя</button>
                         </form>
                     </section>
 
-                    <section class="surface-section">
+                    <section class="surface-section account-panel">
                         <div class="section-head">
                             <h2>Смена пароля</h2>
+                            <span>Безопасность</span>
                         </div>
                         <form class="compact-form" id="profilePasswordForm">
                             <input class="sr-only" id="passwordUsername" type="email" autocomplete="username" aria-label="Email аккаунта" readonly>
@@ -419,13 +422,15 @@
                             <input id="newPassword" type="password" autocomplete="new-password" required>
                             <label for="confirmNewPassword">Повторите пароль</label>
                             <input id="confirmNewPassword" type="password" autocomplete="new-password" required>
-                            <button class="btn btn-primary" type="submit">Обновить пароль</button>
+                            <p class="form-message" id="profilePasswordMessage" role="status" aria-live="polite"></p>
+                            <button class="btn btn-primary" type="submit" id="profilePasswordSubmit">Обновить пароль</button>
                         </form>
                     </section>
 
-                    <section class="surface-section">
+                    <section class="surface-section account-panel">
                         <div class="section-head">
                             <h2>Тема</h2>
+                            <span>Синхронизируется</span>
                         </div>
                         <div class="theme-choice" role="group" aria-label="Настройка темы">
                             <button class="theme-option" type="button" data-theme-choice="light">

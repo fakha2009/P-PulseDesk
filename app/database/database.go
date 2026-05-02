@@ -44,9 +44,19 @@ func (db *DB) Migrate() error {
 			email VARCHAR(190) NOT NULL UNIQUE,
 			password_hash TEXT NOT NULL,
 			role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
+			theme TEXT NOT NULL DEFAULT 'dark' CHECK (theme IN ('light','dark')),
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'dark'`,
+		`DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'users_theme_check'
+			) THEN
+				ALTER TABLE users ADD CONSTRAINT users_theme_check CHECK (theme IN ('light','dark'));
+			END IF;
+		END $$`,
 		`CREATE TABLE IF NOT EXISTS tasks (
 			id BIGSERIAL PRIMARY KEY,
 			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -15,6 +15,7 @@ type User struct {
 	Name         string    `json:"name"`
 	Email        string    `json:"email"`
 	Role         string    `json:"role"`
+	Theme        string    `json:"theme"`
 	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -75,6 +76,10 @@ type UserPasswordUpdate struct {
 	CurrentPassword string `json:"current_password" validate:"required"`
 	NewPassword     string `json:"new_password" validate:"required,min=8"`
 	ConfirmPassword string `json:"confirm_password" validate:"required"`
+}
+
+type UserThemeUpdate struct {
+	Theme string `json:"theme" validate:"required,oneof=light dark"`
 }
 
 type Task struct {

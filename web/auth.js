@@ -4,7 +4,7 @@ class AuthManager {
     }
 
     init() {
-        this.applyTheme(localStorage.getItem('theme') || 'light');
+        this.applyTheme(this.getPreferredTheme());
         this.bindEvents();
         this.verifyExistingToken();
     }
@@ -116,6 +116,9 @@ class AuthManager {
 
             localStorage.setItem('token', result.token);
             localStorage.setItem('user', JSON.stringify(result.user));
+            if (result.user?.theme) {
+                this.applyTheme(result.user.theme, true);
+            }
             this.toast(successMessage, 'success');
             window.setTimeout(() => {
                 window.location.href = this.appUrl();
@@ -138,7 +141,10 @@ class AuthManager {
         if (!token) return;
 
         try {
-            await this.apiFetch('/api/auth/me', { skipAuthRedirect: true });
+            const user = await this.apiFetch('/api/auth/me', { skipAuthRedirect: true });
+            if (user?.theme) {
+                this.applyTheme(user.theme, true);
+            }
             window.location.href = this.appUrl();
             return;
         } catch (error) {
@@ -154,6 +160,14 @@ class AuthManager {
 
     appUrl() {
         return window.location.protocol === 'file:' ? 'app.html' : '/app';
+    }
+
+    getPreferredTheme() {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light' || saved === 'dark') {
+            return saved;
+        }
+        return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
 
     applyTheme(theme, persist = false) {

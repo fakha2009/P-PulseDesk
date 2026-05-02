@@ -83,6 +83,8 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 	api.Use(authMiddleware.RequireAuth())
 	{
 		api.GET("/stats", statsHandler.Get)
+		api.PATCH("/user/theme", authHandler.UpdateTheme)
+
 		api.GET("/tasks", taskHandler.GetAll)
 		api.POST("/tasks", taskHandler.Create)
 		api.PATCH("/tasks/reorder", taskHandler.Reorder)

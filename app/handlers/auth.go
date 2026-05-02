@@ -183,6 +183,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 			"name":       user.Name,
 			"email":      user.Email,
 			"role":       user.Role,
+			"theme":      user.Theme,
 			"created_at": user.CreatedAt,
 		},
 	})
@@ -235,6 +236,54 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
 		Data:    user,
+	})
+}
+
+func (h *AuthHandler) UpdateTheme(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "User not found in context",
+		})
+		return
+	}
+
+	var req models.UserThemeUpdate
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid request format: " + err.Error(),
+		})
+		return
+	}
+
+	theme := strings.TrimSpace(req.Theme)
+	user, err := h.userService.UpdateTheme(userID, theme)
+	if err != nil {
+		status := http.StatusNotFound
+		message := "User not found"
+		if errors.Is(err, service.ErrInvalidTheme) {
+			status = http.StatusBadRequest
+			message = "Theme must be light or dark"
+		}
+		c.JSON(status, models.APIResponse{
+			Success: false,
+			Error:   message,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Data: gin.H{
+			"id":         user.ID,
+			"name":       user.Name,
+			"email":      user.Email,
+			"role":       user.Role,
+			"theme":      user.Theme,
+			"created_at": user.CreatedAt,
+		},
 	})
 }
 

@@ -28,7 +28,7 @@ class ProductivityDashboard {
     }
 
     async init() {
-        this.applyTheme(localStorage.getItem('theme') || 'light');
+        this.applyTheme(this.getPreferredTheme());
 
         if (!localStorage.getItem('token')) {
             this.redirectToAuth();
@@ -45,6 +45,9 @@ class ProductivityDashboard {
         try {
             this.currentUser = await this.request('/api/auth/me');
             localStorage.setItem('user', JSON.stringify(this.currentUser));
+            if (this.currentUser.theme) {
+                this.applyTheme(this.currentUser.theme, true);
+            }
             this.updateUserInterface();
             this.showPage(this.pageFromPath(window.location.pathname), { replace: true });
             await this.loadAll();
@@ -79,7 +82,7 @@ class ProductivityDashboard {
         document.getElementById('mobileThemeToggle')?.addEventListener('click', () => this.toggleTheme());
 
         document.querySelectorAll('[data-theme-choice]').forEach((button) => {
-            button.addEventListener('click', () => this.applyTheme(button.dataset.themeChoice, true));
+            button.addEventListener('click', () => this.setTheme(button.dataset.themeChoice));
         });
 
         document.getElementById('sidebarLogout')?.addEventListener('click', () => this.logout());
@@ -1134,10 +1137,14 @@ class ProductivityDashboard {
     async saveProfileName() {
         const name = document.getElementById('profileNameInput').value.trim();
         if (!name) {
+            this.setFormMessage('profileNameMessage', 'Введите имя', 'error');
             this.toast('Введите имя', 'error');
             return;
         }
 
+        const button = document.getElementById('profileNameSubmit');
+        this.setLoading(button, true);
+        this.setFormMessage('profileNameMessage', '');
         try {
             this.currentUser = await this.request('/api/auth/me', {
                 method: 'PUT',
@@ -1145,9 +1152,13 @@ class ProductivityDashboard {
             });
             localStorage.setItem('user', JSON.stringify(this.currentUser));
             this.updateUserInterface();
+            this.setFormMessage('profileNameMessage', 'Имя сохранено', 'success');
             this.toast('Имя обновлено', 'success');
         } catch (error) {
+            this.setFormMessage('profileNameMessage', error.message, 'error');
             this.toast(error.message, 'error');
+        } finally {
+            this.setLoading(button, false);
         }
     }
 
@@ -1157,10 +1168,14 @@ class ProductivityDashboard {
         const confirmPassword = document.getElementById('confirmNewPassword').value;
 
         if (newPassword !== confirmPassword) {
+            this.setFormMessage('profilePasswordMessage', 'Пароли не совпадают', 'error');
             this.toast('Пароли не совпадают', 'error');
             return;
         }
 
+        const button = document.getElementById('profilePasswordSubmit');
+        this.setLoading(button, true);
+        this.setFormMessage('profilePasswordMessage', '');
         try {
             await this.request('/api/auth/password', {
                 method: 'PUT',
@@ -1171,9 +1186,13 @@ class ProductivityDashboard {
                 }),
             });
             document.getElementById('profilePasswordForm').reset();
+            this.setFormMessage('profilePasswordMessage', 'Пароль обновлен', 'success');
             this.toast('Пароль обновлен', 'success');
         } catch (error) {
+            this.setFormMessage('profilePasswordMessage', error.message, 'error');
             this.toast(error.message, 'error');
+        } finally {
+            this.setLoading(button, false);
         }
     }
 
@@ -1361,9 +1380,39 @@ class ProductivityDashboard {
         window.location.href = window.location.protocol === 'file:' ? 'index.html' : '/auth';
     }
 
-    toggleTheme() {
+    async toggleTheme() {
         const current = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-        this.applyTheme(current === 'dark' ? 'light' : 'dark', true);
+        await this.setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    getPreferredTheme() {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light' || saved === 'dark') {
+            return saved;
+        }
+        return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    async setTheme(theme) {
+        if (theme !== 'light' && theme !== 'dark') return;
+
+        this.applyTheme(theme, true);
+
+        if (!localStorage.getItem('token')) {
+            return;
+        }
+
+        try {
+            const user = await this.request('/api/user/theme', {
+                method: 'PATCH',
+                body: JSON.stringify({ theme }),
+            });
+            this.currentUser = { ...(this.currentUser || {}), ...user };
+            localStorage.setItem('user', JSON.stringify(this.currentUser));
+            this.updateUserInterface();
+        } catch (error) {
+            this.toast('Тема применена локально, но не синхронизировалась с аккаунтом', 'error');
+        }
     }
 
     applyTheme(theme, persist = false) {
@@ -1378,6 +1427,19 @@ class ProductivityDashboard {
         document.querySelectorAll('[data-theme-choice]').forEach((button) => {
             button.classList.toggle('active', button.dataset.themeChoice === theme);
         });
+    }
+
+    setFormMessage(id, message, type = '') {
+        const element = document.getElementById(id);
+        if (!element) return;
+        element.textContent = message || '';
+        element.className = `form-message${type ? ` ${type}` : ''}`;
+    }
+
+    setLoading(button, loading) {
+        if (!button) return;
+        button.disabled = loading;
+        button.classList.toggle('is-loading', loading);
     }
 
     setDefaultSleepInputs() {

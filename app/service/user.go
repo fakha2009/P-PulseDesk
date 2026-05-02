@@ -10,6 +10,7 @@ import (
 var (
 	ErrUserNotFound = errors.New("user not found")
 	ErrEmailExists  = errors.New("email already exists")
+	ErrInvalidTheme = errors.New("invalid theme")
 )
 
 type UserService struct {
@@ -70,6 +71,18 @@ func (s *UserService) UpdatePassword(id int64, passwordHash string) error {
 		return ErrUserNotFound
 	}
 	return nil
+}
+
+func (s *UserService) UpdateTheme(id int64, theme string) (*models.User, error) {
+	if theme != "light" && theme != "dark" {
+		return nil, ErrInvalidTheme
+	}
+
+	user, err := s.repo.UpdateTheme(id, theme)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	return user, nil
 }
 
 func (s *UserService) Delete(id int64) error {

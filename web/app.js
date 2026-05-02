@@ -14,6 +14,15 @@ class ProductivityDashboard {
         this.pomodoroTaskID = null;
         this.originalTitle = document.title;
         this.sidebarTouchStartX = 0;
+        this.routes = {
+            dashboard: '/dashboard',
+            tasks: '/tasks',
+            calendar: '/calendar',
+            habits: '/habits',
+            sleep: '/sleep',
+            profile: '/profile',
+            admin: '/admin',
+        };
         this.confirmResolver = null;
         this.init();
     }
@@ -37,7 +46,7 @@ class ProductivityDashboard {
             this.currentUser = await this.request('/api/auth/me');
             localStorage.setItem('user', JSON.stringify(this.currentUser));
             this.updateUserInterface();
-            this.showPage('dashboard');
+            this.showPage(this.pageFromPath(window.location.pathname), { replace: true });
             await this.loadAll();
         } catch (error) {
             this.redirectToAuth();
@@ -145,6 +154,10 @@ class ProductivityDashboard {
                 this.closeSidebar();
                 this.closeModal(false);
             }
+        });
+
+        window.addEventListener('popstate', () => {
+            this.showPage(this.pageFromPath(window.location.pathname), { history: false });
         });
     }
 
@@ -271,7 +284,7 @@ class ProductivityDashboard {
             registration.showNotification('PulseDesk: задача скоро истекает', {
                 body,
                 tag: key,
-                data: { url: '/app', page: 'tasks' },
+                data: { url: '/tasks', page: 'tasks' },
             });
             return;
         }
@@ -305,11 +318,37 @@ class ProductivityDashboard {
         }
     }
 
-    showPage(page) {
+    pageFromPath(pathname) {
+        const cleanPath = String(pathname || '').replace(/\/$/, '') || '/';
+        if (cleanPath === '/app') {
+            return 'dashboard';
+        }
+        const match = Object.entries(this.routes).find(([, path]) => path === cleanPath);
+        return match?.[0] || 'dashboard';
+    }
+
+    pathForPage(page) {
+        return this.routes[page] || '/dashboard';
+    }
+
+    syncRoute(page, options = {}) {
+        if (window.location.protocol === 'file:') return;
+        const target = this.pathForPage(page);
+        if (window.location.pathname === target) return;
+        const state = { page };
+        if (options.replace) {
+            window.history.replaceState(state, '', target);
+        } else if (options.history !== false) {
+            window.history.pushState(state, '', target);
+        }
+    }
+
+    showPage(page, options = {}) {
         if (page === 'admin' && this.currentUser?.role !== 'admin') {
             this.toast('Доступ только для администратора', 'error');
             page = 'dashboard';
         }
+        this.syncRoute(page, options);
         this.currentPage = page;
         document.querySelectorAll('.page').forEach((section) => {
             section.classList.toggle('active', section.id === `${page}-page`);

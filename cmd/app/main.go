@@ -52,6 +52,7 @@ func main() {
 	router.StaticFile("/manifest.webmanifest", "./web/manifest.webmanifest")
 	router.Static("/assets", "./web/assets")
 	router.StaticFile("/config.js", "./web/config.js")
+	router.StaticFile("/sw.js", "./web/sw.js")
 	router.GET("/", func(c *gin.Context) {
 		c.File("./web/auth.html")
 	})
@@ -61,6 +62,12 @@ func main() {
 	router.GET("/app", func(c *gin.Context) {
 		c.File("./web/app.html")
 	})
+	for _, path := range []string{"/dashboard", "/tasks", "/calendar", "/habits", "/sleep", "/profile", "/admin"} {
+		routePath := path
+		router.GET(routePath, func(c *gin.Context) {
+			c.File("./web/app.html")
+		})
+	}
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	srv := &http.Server{

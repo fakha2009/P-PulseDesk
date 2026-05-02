@@ -11,6 +11,34 @@
       "destination": "/app.html"
     },
     {
+      "source": "/dashboard",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/tasks",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/calendar",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/habits",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/sleep",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/profile",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/app.html"
+    },
+    {
       "source": "/",
       "destination": "/index.html"
     }

@@ -10,19 +10,47 @@
     },
     {
       "source": "/auth",
-      "destination": "/web/auth.html"
+      "destination": "/auth.html"
     },
     {
       "source": "/app",
-      "destination": "/web/app.html"
+      "destination": "/app.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/tasks",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/calendar",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/habits",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/sleep",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/profile",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/app.html"
     },
     {
       "source": "/",
-      "destination": "/web/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/(.*)",
-      "destination": "/web/$1"
+      "destination": "/$1"
     }
   ],
   "headers": [

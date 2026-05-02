@@ -5,6 +5,13 @@ app.exe
 app.exe~
 *.log
 web/.vercel
+web/dashboard.html
+web/tasks.html
+web/calendar.html
+web/habits.html
+web/sleep.html
+web/profile.html
+web/admin.html
 
 .vercel
 generate_token.go

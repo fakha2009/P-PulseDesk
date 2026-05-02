@@ -1,15 +1,21 @@
 :root {
-    --bg: #f4f6fb;
-    --bg-soft: #edf1f8;
-    --surface: #ffffff;
-    --surface-muted: #f8fafc;
-    --text: #121826;
-    --muted: rgba(18, 24, 38, 0.68);
-    --faint: #98a2b3;
+    --bg: #F8FAFC;
+    --bg-soft: #F1F5F9;
+    --surface: #FFFFFF;
+    --surface-muted: #F8FAFC;
+    --elevated: #F1F5F9;
+    --text: #0F172A;
+    --muted: #475569;
+    --faint: rgba(15, 23, 42, 0.52);
     --border: rgba(15, 23, 42, 0.08);
-    --primary: #635bff;
-    --primary-strong: #4f46e5;
-    --accent: #0891b2;
+    --border-strong: rgba(15, 23, 42, 0.12);
+    --primary: #7C3AED;
+    --primary-strong: #8B5CF6;
+    --primary-active: #6D28D9;
+    --indigo: #6366F1;
+    --blue: #3B82F6;
+    --accent: #3B82F6;
+    --accent-gradient: linear-gradient(135deg, #7C3AED 0%, #6366F1 45%, #3B82F6 100%);
     --success: #16a34a;
     --warning: #d97706;
     --danger: #dc2626;
@@ -32,14 +38,22 @@
 }
 
 [data-theme="dark"] {
-    --bg: #080b12;
-    --bg-soft: #101622;
-    --surface: #111722;
-    --surface-muted: #0d131d;
-    --text: #f7f8fb;
-    --muted: rgba(247, 248, 251, 0.7);
-    --faint: rgba(247, 248, 251, 0.42);
+    --bg: #0B0F19;
+    --bg-soft: #0F172A;
+    --surface: #111827;
+    --surface-muted: #0F172A;
+    --elevated: #151E33;
+    --text: #F8FAFC;
+    --muted: rgba(248, 250, 252, 0.72);
+    --faint: rgba(248, 250, 252, 0.52);
     --border: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.10);
+    --primary: #7C3AED;
+    --primary-strong: #8B5CF6;
+    --primary-active: #6D28D9;
+    --indigo: #6366F1;
+    --blue: #3B82F6;
+    --accent: #3B82F6;
     --primary: #8f8bff;
     --primary-strong: #b9b7ff;
     --accent: #38c7df;
@@ -49,6 +63,38 @@
     --shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
     --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.3);
     --card-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018) 34%, var(--surface) 100%);
+}
+
+[data-accent="blue"] {
+    --primary: #3B82F6;
+    --primary-strong: #60A5FA;
+    --primary-active: #2563EB;
+    --accent: #38BDF8;
+    --accent-gradient: linear-gradient(135deg, #2563EB 0%, #3B82F6 55%, #38BDF8 100%);
+}
+
+[data-accent="emerald"] {
+    --primary: #10B981;
+    --primary-strong: #34D399;
+    --primary-active: #059669;
+    --accent: #22C55E;
+    --accent-gradient: linear-gradient(135deg, #059669 0%, #10B981 55%, #22C55E 100%);
+}
+
+[data-accent="rose"] {
+    --primary: #F43F5E;
+    --primary-strong: #FB7185;
+    --primary-active: #E11D48;
+    --accent: #EC4899;
+    --accent-gradient: linear-gradient(135deg, #E11D48 0%, #F43F5E 55%, #EC4899 100%);
+}
+
+[data-accent="amber"] {
+    --primary: #F59E0B;
+    --primary-strong: #FBBF24;
+    --primary-active: #D97706;
+    --accent: #F97316;
+    --accent-gradient: linear-gradient(135deg, #D97706 0%, #F59E0B 55%, #F97316 100%);
 }
 
 * {
@@ -63,7 +109,8 @@ body {
     margin: 0;
     min-height: 100vh;
     background:
-        radial-gradient(circle at top right, color-mix(in srgb, var(--primary), transparent 92%), transparent 34rem),
+        radial-gradient(circle at 6% -4%, color-mix(in srgb, var(--primary), transparent 88%), transparent 30rem),
+        radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--blue), transparent 90%), transparent 34rem),
         var(--bg);
     color: var(--text);
     font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -73,6 +120,53 @@ body {
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
     transition: background-color var(--ease), color var(--ease);
+}
+
+[data-glow="off"] body {
+    background: var(--bg);
+}
+
+[data-motion="reduced"] * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+}
+
+.route-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: grid;
+    place-content: center;
+    gap: 10px;
+    text-align: center;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.route-loader small {
+    color: var(--muted);
+}
+
+.loader-mark {
+    width: 44px;
+    height: 44px;
+    justify-self: center;
+    border-radius: 16px;
+    background: var(--accent-gradient);
+    box-shadow: 0 18px 42px color-mix(in srgb, var(--primary), transparent 72%);
+    animation: pulseMark 1.2s ease-in-out infinite;
+}
+
+body.app-ready .route-loader {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease;
+}
+
+body.app-booting .app-shell {
+    visibility: hidden;
 }
 
 body.sidebar-open {
@@ -918,13 +1012,17 @@ select:focus-visible {
 }
 
 .btn-primary {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--primary), #fff 10%), var(--primary));
+    background: var(--accent-gradient);
     color: #fff;
     box-shadow: 0 10px 26px color-mix(in srgb, var(--primary), transparent 82%);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(180deg, var(--primary-strong), var(--primary));
+    filter: brightness(1.06);
+}
+
+.btn-primary:active {
+    background: var(--primary-active);
 }
 
 .btn-secondary {
@@ -1176,6 +1274,23 @@ select:focus-visible {
     overflow-x: auto;
 }
 
+.admin-controls {
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) 150px 170px;
+    gap: 10px;
+}
+
+.admin-controls select,
+.admin-role-select {
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-button);
+    background: var(--surface-muted);
+    color: var(--text);
+    padding: 0 12px;
+}
+
 .admin-table {
     width: 100%;
     border-collapse: collapse;
@@ -1200,6 +1315,36 @@ select:focus-visible {
 
 .admin-table tbody tr:hover {
     background: var(--surface-muted);
+}
+
+.admin-table tr.disabled-user {
+    opacity: 0.62;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.status-active {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success), transparent 88%);
+}
+
+.status-disabled {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger), transparent 88%);
+}
+
+.admin-actions {
+    display: flex;
+    gap: 6px;
 }
 
 .role-badge {
@@ -1239,8 +1384,75 @@ select:focus-visible {
 
 .theme-choice {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
+}
+
+.theme-choice.two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.appearance-panel {
+    display: grid;
+    gap: 18px;
+}
+
+.setting-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.accent-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.accent-swatch {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--swatch);
+    cursor: pointer;
+    transition: transform var(--ease), box-shadow var(--ease), border-color var(--ease);
+}
+
+.accent-swatch.active,
+.accent-swatch:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--swatch), #fff 30%);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--swatch), transparent 78%);
+}
+
+.setting-toggle {
+    width: 100%;
+    min-height: 58px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--surface-muted), var(--surface) 28%);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.setting-toggle small {
+    display: block;
+    color: var(--muted);
+}
+
+.setting-toggle i {
+    color: var(--primary);
+    font-size: 1.45rem;
 }
 
 .theme-option {
@@ -1260,6 +1472,7 @@ select:focus-visible {
 .theme-option:hover {
     border-color: var(--primary);
     color: var(--primary);
+    background: color-mix(in srgb, var(--primary), transparent 90%);
 }
 
 .empty-state {
@@ -1619,6 +1832,31 @@ select:focus-visible {
     }
 }
 
+@keyframes pulseMark {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+    50% {
+        transform: scale(1.08);
+        opacity: 1;
+    }
+}
+
+[data-density="compact"] {
+    --space-2: 12px;
+    --space-3: 18px;
+    --space-4: 24px;
+    --bottom-nav-height: 60px;
+}
+
+[data-density="compact"] .metric-card,
+[data-density="compact"] .list-item,
+[data-density="compact"] .dashboard-row {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
 @media (max-width: 1040px) {
     .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1883,6 +2121,14 @@ select:focus-visible {
         content: attr(data-label);
         color: var(--muted);
         font-weight: 800;
+    }
+
+    .admin-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-actions {
+        justify-content: flex-end;
     }
 }
 

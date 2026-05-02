@@ -66,6 +66,7 @@ func (r *AdminRepository) Users() ([]models.AdminUserSummary, error) {
 			u.name,
 			u.email,
 			u.role,
+			u.disabled,
 			u.created_at,
 			COUNT(DISTINCT t.id) AS task_count,
 			COUNT(DISTINCT h.id) AS habit_count,
@@ -74,7 +75,7 @@ func (r *AdminRepository) Users() ([]models.AdminUserSummary, error) {
 		LEFT JOIN tasks t ON t.user_id = u.id
 		LEFT JOIN habits h ON h.user_id = u.id
 		LEFT JOIN sleep_logs sl ON sl.user_id = u.id
-		GROUP BY u.id, u.name, u.email, u.role, u.created_at
+		GROUP BY u.id, u.name, u.email, u.role, u.disabled, u.created_at
 		ORDER BY u.created_at DESC, u.id DESC
 	`)
 	if err != nil {
@@ -90,6 +91,7 @@ func (r *AdminRepository) Users() ([]models.AdminUserSummary, error) {
 			&user.Name,
 			&user.Email,
 			&user.Role,
+			&user.Disabled,
 			&user.CreatedAt,
 			&user.TaskCount,
 			&user.HabitCount,
@@ -107,5 +109,27 @@ func (r *AdminRepository) Users() ([]models.AdminUserSummary, error) {
 
 func (r *AdminRepository) UpdateUserRole(id int64, role string) error {
 	_, err := r.db.Exec("UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2", role, id)
+	return err
+}
+
+func (r *AdminRepository) UserRole(id int64) (string, error) {
+	var role string
+	err := r.db.QueryRow("SELECT role FROM users WHERE id = $1", id).Scan(&role)
+	return role, err
+}
+
+func (r *AdminRepository) AdminCount() (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM users WHERE role = 'admin' AND disabled = FALSE").Scan(&count)
+	return count, err
+}
+
+func (r *AdminRepository) UpdateUserStatus(id int64, disabled bool) error {
+	_, err := r.db.Exec("UPDATE users SET disabled = $1, updated_at = NOW() WHERE id = $2", disabled, id)
+	return err
+}
+
+func (r *AdminRepository) DeleteUser(id int64) error {
+	_, err := r.db.Exec("DELETE FROM users WHERE id = $1", id)
 	return err
 }

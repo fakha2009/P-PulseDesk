@@ -41,7 +41,7 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 	statsHandler := handlers.NewStatsHandler(statsService)
 	adminHandler := handlers.NewAdminHandler(adminService)
 
-	authMiddleware := middleware.NewAuthMiddleware(jwtManager)
+	authMiddleware := middleware.NewAuthMiddleware(jwtManager, db.DB)
 	rateLimiter := middleware.NewRateLimiter(20, time.Minute)
 
 	if cfg.AppEnv == "production" {
@@ -84,6 +84,8 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 	{
 		api.GET("/stats", statsHandler.Get)
 		api.PATCH("/user/theme", authHandler.UpdateTheme)
+		api.GET("/user/preferences", authHandler.Preferences)
+		api.PATCH("/user/preferences", authHandler.UpdatePreferences)
 
 		api.GET("/tasks", taskHandler.GetAll)
 		api.POST("/tasks", taskHandler.Create)
@@ -116,6 +118,8 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 		admin.GET("/stats", adminHandler.Stats)
 		admin.GET("/users", adminHandler.Users)
 		admin.PATCH("/users/:id/role", adminHandler.UpdateUserRole)
+		admin.PATCH("/users/:id/status", adminHandler.UpdateUserStatus)
+		admin.DELETE("/users/:id", adminHandler.DeleteUser)
 	}
 
 	return router

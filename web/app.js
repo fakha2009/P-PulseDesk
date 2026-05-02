@@ -1,8 +1,18 @@
 class ProductivityDashboard {
     constructor() {
-        this.currentPage = 'dashboard';
+        this.routes = {
+            dashboard: '/dashboard',
+            tasks: '/tasks',
+            calendar: '/calendar',
+            habits: '/habits',
+            sleep: '/sleep',
+            profile: '/profile',
+            admin: '/admin',
+        };
+        this.currentPage = this.pageFromPath(window.location.pathname);
         this.currentFilter = 'all';
         this.currentUser = null;
+        this.preferences = this.defaultPreferences();
         this.editingTask = null;
         this.editingHabit = null;
         this.editingSleepLog = null;
@@ -14,21 +24,12 @@ class ProductivityDashboard {
         this.pomodoroTaskID = null;
         this.originalTitle = document.title;
         this.sidebarTouchStartX = 0;
-        this.routes = {
-            dashboard: '/dashboard',
-            tasks: '/tasks',
-            calendar: '/calendar',
-            habits: '/habits',
-            sleep: '/sleep',
-            profile: '/profile',
-            admin: '/admin',
-        };
         this.confirmResolver = null;
         this.init();
     }
 
     async init() {
-        this.applyTheme(this.getPreferredTheme());
+        this.applyPreferences(this.loadLocalPreferences(), false);
 
         if (!localStorage.getItem('token')) {
             this.redirectToAuth();
@@ -45,11 +46,11 @@ class ProductivityDashboard {
         try {
             this.currentUser = await this.request('/api/auth/me');
             localStorage.setItem('user', JSON.stringify(this.currentUser));
-            if (this.currentUser.theme) {
-                this.applyTheme(this.currentUser.theme, true);
-            }
+            await this.loadPreferences();
             this.updateUserInterface();
             this.showPage(this.pageFromPath(window.location.pathname), { replace: true });
+            document.body.classList.remove('app-booting');
+            document.body.classList.add('app-ready');
             await this.loadAll();
         } catch (error) {
             this.redirectToAuth();
@@ -83,6 +84,10 @@ class ProductivityDashboard {
 
         document.querySelectorAll('[data-theme-choice]').forEach((button) => {
             button.addEventListener('click', () => this.setTheme(button.dataset.themeChoice));
+        });
+
+        document.querySelectorAll('[data-preference]').forEach((button) => {
+            button.addEventListener('click', () => this.handlePreferenceClick(button));
         });
 
         document.getElementById('sidebarLogout')?.addEventListener('click', () => this.logout());
@@ -138,6 +143,9 @@ class ProductivityDashboard {
         });
 
         document.getElementById('refreshAdminButton')?.addEventListener('click', () => this.loadAdmin());
+        document.getElementById('adminUserSearch')?.addEventListener('input', () => this.renderAdminUsers());
+        document.getElementById('adminRoleFilter')?.addEventListener('change', () => this.renderAdminUsers());
+        document.getElementById('adminStatusFilter')?.addEventListener('change', () => this.renderAdminUsers());
 
         document.querySelectorAll('[data-close-modal]').forEach((button) => {
             button.addEventListener('click', () => this.closeModal(false));
@@ -152,6 +160,12 @@ class ProductivityDashboard {
         document.getElementById('confirmAction')?.addEventListener('click', () => this.closeModal(true));
 
         document.addEventListener('click', (event) => this.handleActionClick(event));
+        document.addEventListener('change', (event) => {
+            const select = event.target.closest('[data-action="admin-role"]');
+            if (select) {
+                this.updateAdminRole(select.dataset.id, select.value);
+            }
+        });
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 this.closeSidebar();
@@ -360,7 +374,9 @@ class ProductivityDashboard {
             button.classList.toggle('active', button.dataset.page === page);
         });
         this.closeSidebar();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (document.body.classList.contains('app-ready')) {
+            window.scrollTo({ top: 0, behavior: this.preferences.motion === 'reduced' ? 'auto' : 'smooth' });
+        }
         this.loadPageData();
     }
 
@@ -1268,25 +1284,99 @@ class ProductivityDashboard {
 
     renderAdminUsers() {
         const table = document.getElementById('adminUsersTable');
-        const users = this.adminUsers || [];
+        const search = (document.getElementById('adminUserSearch')?.value || '').trim().toLowerCase();
+        const roleFilter = document.getElementById('adminRoleFilter')?.value || 'all';
+        const statusFilter = document.getElementById('adminStatusFilter')?.value || 'all';
+        const users = (this.adminUsers || []).filter((user) => {
+            const matchesSearch = !search || `${user.name} ${user.email}`.toLowerCase().includes(search);
+            const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+            const matchesStatus = statusFilter === 'all' || (statusFilter === 'disabled' ? user.disabled : !user.disabled);
+            return matchesSearch && matchesRole && matchesStatus;
+        });
         this.setText('adminUserCount', `${users.length} ${this.plural(users.length, 'пользователь', 'пользователя', 'пользователей')}`);
         if (!table) return;
         if (!users.length) {
-            table.innerHTML = '<tr><td colspan="8">Пользователей пока нет</td></tr>';
+            table.innerHTML = '<tr><td colspan="10">Пользователей не найдено</td></tr>';
             return;
         }
         table.innerHTML = users.map((user) => `
-            <tr>
+            <tr class="${user.disabled ? 'disabled-user' : ''}">
                 <td data-label="ID">${user.id}</td>
                 <td data-label="Имя"><strong>${this.escape(user.name)}</strong></td>
                 <td data-label="Email">${this.escape(user.email)}</td>
-                <td data-label="Role"><span class="role-badge role-${this.escape(user.role)}">${this.escape(user.role)}</span></td>
+                <td data-label="Role">
+                    <select class="admin-role-select" data-action="admin-role" data-id="${user.id}" aria-label="Изменить роль">
+                        <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
+                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
+                    </select>
+                </td>
+                <td data-label="Статус"><span class="status-badge ${user.disabled ? 'status-disabled' : 'status-active'}">${user.disabled ? 'disabled' : 'active'}</span></td>
                 <td data-label="Регистрация">${this.formatDate(user.created_at)}</td>
                 <td data-label="Задачи">${user.task_count || 0}</td>
                 <td data-label="Привычки">${user.habit_count || 0}</td>
                 <td data-label="Сон">${user.sleep_log_count || 0}</td>
+                <td data-label="Действия">
+                    <div class="admin-actions">
+                        <button class="icon-button" type="button" data-action="admin-status" data-id="${user.id}" data-disabled="${!user.disabled}" aria-label="${user.disabled ? 'Включить' : 'Отключить'} пользователя">
+                            <i class="fas ${user.disabled ? 'fa-user-check' : 'fa-user-slash'}" aria-hidden="true"></i>
+                        </button>
+                        <button class="icon-button danger" type="button" data-action="admin-delete" data-id="${user.id}" data-name="${this.escape(user.name)}" data-email="${this.escape(user.email)}" aria-label="Удалить пользователя">
+                            <i class="fas fa-trash" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </td>
             </tr>
         `).join('');
+    }
+
+    async updateAdminRole(id, role) {
+        const user = (this.adminUsers || []).find((item) => String(item.id) === String(id));
+        if (!user || user.role === role) return;
+        const confirmed = await this.confirm(`Изменить роль пользователя ${user.email} на ${role}?`, 'Изменить');
+        if (!confirmed) {
+            this.renderAdminUsers();
+            return;
+        }
+        try {
+            await this.request(`/api/admin/users/${id}/role`, {
+                method: 'PATCH',
+                body: JSON.stringify({ role, confirm: true }),
+            });
+            this.toast('Роль обновлена', 'success');
+            await this.loadAdmin();
+        } catch (error) {
+            this.toast(error.message, 'error');
+            this.renderAdminUsers();
+        }
+    }
+
+    async updateAdminStatus(id, disabled) {
+        const user = (this.adminUsers || []).find((item) => String(item.id) === String(id));
+        if (!user) return;
+        const action = disabled ? 'отключить' : 'включить';
+        if (!(await this.confirm(`Вы уверены, что хотите ${action} аккаунт ${user.email}?`, disabled ? 'Отключить' : 'Включить'))) return;
+        try {
+            await this.request(`/api/admin/users/${id}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ disabled, confirm: true }),
+            });
+            this.toast(disabled ? 'Аккаунт отключен' : 'Аккаунт включен', 'success');
+            await this.loadAdmin();
+        } catch (error) {
+            this.toast(error.message, 'error');
+        }
+    }
+
+    async deleteAdminUser(id, name, email) {
+        const label = email || name || `ID ${id}`;
+        if (!(await this.confirm(`Удалить пользователя ${label}? Это действие нельзя отменить.`, 'Удалить'))) return;
+        try {
+            await this.request(`/api/admin/users/${id}`, { method: 'DELETE' });
+            this.toast('Пользователь удален', 'success');
+            await this.loadAdmin();
+        } catch (error) {
+            this.toast(error.message, 'error');
+        }
     }
 
     updateUserInterface() {
@@ -1325,6 +1415,8 @@ class ProductivityDashboard {
             'habit-delete': () => this.deleteHabit(id),
             'sleep-edit': () => this.editSleepLog(id),
             'sleep-delete': () => this.deleteSleepLog(id),
+            'admin-status': () => this.updateAdminStatus(id, button.dataset.disabled === 'true'),
+            'admin-delete': () => this.deleteAdminUser(id, button.dataset.name, button.dataset.email),
         };
 
         actions[action]?.();
@@ -1352,8 +1444,9 @@ class ProductivityDashboard {
         }
     }
 
-    confirm(message) {
+    confirm(message, actionLabel = 'Подтвердить') {
         this.setText('confirmMessage', message);
+        this.setText('confirmAction', actionLabel);
         this.openModal('confirmModal');
         return new Promise((resolve) => {
             this.confirmResolver = resolve;
@@ -1381,52 +1474,113 @@ class ProductivityDashboard {
     }
 
     async toggleTheme() {
-        const current = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-        await this.setTheme(current === 'dark' ? 'light' : 'dark');
+        const resolved = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+        await this.setPreference('theme', resolved === 'dark' ? 'light' : 'dark');
     }
 
     getPreferredTheme() {
-        const saved = localStorage.getItem('theme');
-        if (saved === 'light' || saved === 'dark') {
-            return saved;
-        }
+        const mode = this.preferences?.theme || localStorage.getItem('theme');
+        if (mode === 'light' || mode === 'dark') return mode;
         return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
 
     async setTheme(theme) {
-        if (theme !== 'light' && theme !== 'dark') return;
+        await this.setPreference('theme', theme);
+    }
 
-        this.applyTheme(theme, true);
+    defaultPreferences() {
+        return {
+            theme: 'dark',
+            accent: 'purple-blue',
+            density: 'comfortable',
+            motion: 'normal',
+            backgroundGlow: true,
+        };
+    }
 
-        if (!localStorage.getItem('token')) {
-            return;
-        }
-
+    loadLocalPreferences() {
         try {
-            const user = await this.request('/api/user/theme', {
-                method: 'PATCH',
-                body: JSON.stringify({ theme }),
-            });
-            this.currentUser = { ...(this.currentUser || {}), ...user };
-            localStorage.setItem('user', JSON.stringify(this.currentUser));
-            this.updateUserInterface();
+            const stored = JSON.parse(localStorage.getItem('preferences') || '{}');
+            const legacyTheme = localStorage.getItem('theme');
+            return {
+                ...this.defaultPreferences(),
+                ...stored,
+                theme: stored.theme || legacyTheme || this.defaultPreferences().theme,
+            };
         } catch (error) {
-            this.toast('Тема применена локально, но не синхронизировалась с аккаунтом', 'error');
+            return this.defaultPreferences();
         }
     }
 
-    applyTheme(theme, persist = false) {
-        document.documentElement.dataset.theme = theme;
-        if (persist) {
-            localStorage.setItem('theme', theme);
+    async loadPreferences() {
+        try {
+            const prefs = await this.request('/api/user/preferences');
+            this.applyPreferences(prefs, true);
+        } catch (error) {
+            const fallback = { ...this.loadLocalPreferences(), theme: this.currentUser?.theme || this.loadLocalPreferences().theme };
+            this.applyPreferences(fallback, true);
         }
-        const icon = theme === 'dark' ? 'fa-sun' : 'fa-moon';
+    }
+
+    async handlePreferenceClick(button) {
+        const key = button.dataset.preference;
+        const rawValue = button.dataset.value;
+        const value = rawValue === 'toggle' ? !this.preferences.backgroundGlow : rawValue;
+        await this.setPreference(key, value);
+    }
+
+    async setPreference(key, value) {
+        const next = { ...this.preferences, [key]: value };
+        this.applyPreferences(next, true);
+
+        if (!localStorage.getItem('token')) return;
+
+        try {
+            const prefs = await this.request('/api/user/preferences', {
+                method: 'PATCH',
+                body: JSON.stringify(next),
+            });
+            this.applyPreferences(prefs, true);
+        } catch (error) {
+            this.toast('Настройка применена локально, но не синхронизировалась', 'error');
+        }
+    }
+
+    applyPreferences(prefs, persist = false) {
+        this.preferences = { ...this.defaultPreferences(), ...(prefs || {}) };
+        const resolvedTheme = this.resolveTheme(this.preferences.theme);
+        document.documentElement.dataset.theme = resolvedTheme;
+        document.documentElement.dataset.themeMode = this.preferences.theme;
+        document.documentElement.dataset.accent = this.preferences.accent;
+        document.documentElement.dataset.density = this.preferences.density;
+        document.documentElement.dataset.motion = this.preferences.motion;
+        document.documentElement.dataset.glow = this.preferences.backgroundGlow ? 'on' : 'off';
+        if (persist) {
+            localStorage.setItem('preferences', JSON.stringify(this.preferences));
+            localStorage.setItem('theme', this.preferences.theme);
+        }
+        const icon = resolvedTheme === 'dark' ? 'fa-sun' : 'fa-moon';
         document.querySelectorAll('#themeToggle i, #mobileThemeToggle i').forEach((item) => {
             item.className = `fas ${icon}`;
         });
         document.querySelectorAll('[data-theme-choice]').forEach((button) => {
-            button.classList.toggle('active', button.dataset.themeChoice === theme);
+            button.classList.toggle('active', button.dataset.themeChoice === this.preferences.theme);
         });
+        document.querySelectorAll('[data-preference]').forEach((button) => {
+            const key = button.dataset.preference;
+            const value = button.dataset.value;
+            const active = value === 'toggle' ? Boolean(this.preferences.backgroundGlow) : String(this.preferences[key]) === value;
+            button.classList.toggle('active', active);
+            if (key === 'backgroundGlow') {
+                const icon = button.querySelector('i');
+                if (icon) icon.className = `fas ${this.preferences.backgroundGlow ? 'fa-toggle-on' : 'fa-toggle-off'}`;
+            }
+        });
+    }
+
+    resolveTheme(mode) {
+        if (mode === 'light' || mode === 'dark') return mode;
+        return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
 
     setFormMessage(id, message, type = '') {

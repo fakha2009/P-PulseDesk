@@ -137,6 +137,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		})
 		return
 	}
+	if user.Disabled {
+		c.JSON(http.StatusForbidden, models.APIResponse{
+			Success: false,
+			Error:   "Account is disabled",
+		})
+		return
+	}
 
 	// Generate JWT token
 	token, err := h.jwtManager.Generate(user.ID, user.Email, user.Role)
@@ -184,6 +191,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 			"email":      user.Email,
 			"role":       user.Role,
 			"theme":      user.Theme,
+			"disabled":   user.Disabled,
 			"created_at": user.CreatedAt,
 		},
 	})
@@ -282,9 +290,48 @@ func (h *AuthHandler) UpdateTheme(c *gin.Context) {
 			"email":      user.Email,
 			"role":       user.Role,
 			"theme":      user.Theme,
+			"disabled":   user.Disabled,
 			"created_at": user.CreatedAt,
 		},
 	})
+}
+
+func (h *AuthHandler) Preferences(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.APIResponse{Success: false, Error: "User not found in context"})
+		return
+	}
+
+	prefs, err := h.userService.GetPreferences(userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, models.APIResponse{Success: false, Error: "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{Success: true, Data: prefs})
+}
+
+func (h *AuthHandler) UpdatePreferences(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.APIResponse{Success: false, Error: "User not found in context"})
+		return
+	}
+
+	var req models.UserPreferencesUpdate
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{Success: false, Error: "Invalid request format"})
+		return
+	}
+
+	prefs, err := h.userService.UpdatePreferences(userID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{Success: false, Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{Success: true, Data: prefs})
 }
 
 func (h *AuthHandler) ChangePassword(c *gin.Context) {

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
@@ -10,10 +11,11 @@ import (
 
 type AuthMiddleware struct {
 	jwtManager *utils.JWTManager
+	db         *sql.DB
 }
 
-func NewAuthMiddleware(jwtManager *utils.JWTManager) *AuthMiddleware {
-	return &AuthMiddleware{jwtManager: jwtManager}
+func NewAuthMiddleware(jwtManager *utils.JWTManager, db *sql.DB) *AuthMiddleware {
+	return &AuthMiddleware{jwtManager: jwtManager, db: db}
 }
 
 func (a *AuthMiddleware) RequireAuth() gin.HandlerFunc {
@@ -40,10 +42,23 @@ func (a *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
+		var role string
+		var disabled bool
+		if err := a.db.QueryRow("SELECT role, disabled FROM users WHERE id = $1", claims.UserID).Scan(&role, &disabled); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "User not found"})
+			c.Abort()
+			return
+		}
+		if disabled {
+			c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "Account is disabled"})
+			c.Abort()
+			return
+		}
+
 		// Store user info in context
 		c.Set("user_id", claims.UserID)
 		c.Set("email", claims.Email)
-		c.Set("role", claims.Role)
+		c.Set("role", role)
 		c.Next()
 	}
 }

@@ -22,7 +22,12 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="manifest" href="manifest.webmanifest">
 </head>
-<body>
+<body class="app-booting">
+    <div class="route-loader" id="routeLoader" role="status" aria-live="polite">
+        <span class="loader-mark" aria-hidden="true"></span>
+        <strong>PulseDesk</strong>
+        <small>Загружаем ваш раздел</small>
+    </div>
     <div class="app-shell">
         <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
         <aside class="sidebar" id="sidebar" aria-label="Основная навигация">
@@ -40,7 +45,7 @@
             </div>
 
             <nav class="side-nav">
-                <button class="nav-link active" type="button" data-page="dashboard">
+                <button class="nav-link" type="button" data-page="dashboard">
                     <i class="fas fa-chart-pie" aria-hidden="true"></i>
                     <span>Обзор</span>
                 </button>
@@ -93,7 +98,7 @@
         </header>
 
         <main class="content" id="mainContent">
-            <section class="page active" id="dashboard-page" aria-labelledby="dashboard-title">
+            <section class="page" id="dashboard-page" aria-labelledby="dashboard-title">
                 <div class="page-head">
                     <div>
                         <p class="eyebrow">сегодня</p>
@@ -432,7 +437,57 @@
                             <h2>Тема</h2>
                             <span>Синхронизируется</span>
                         </div>
-                        <div class="theme-choice" role="group" aria-label="Настройка темы">
+                        <div class="appearance-panel">
+                            <div>
+                                <span class="setting-label">Режим</span>
+                                <div class="theme-choice" role="group" aria-label="Настройка темы">
+                                    <button class="theme-option" type="button" data-preference="theme" data-value="light">
+                                        <i class="fas fa-sun" aria-hidden="true"></i>
+                                        Светлая
+                                    </button>
+                                    <button class="theme-option" type="button" data-preference="theme" data-value="dark">
+                                        <i class="fas fa-moon" aria-hidden="true"></i>
+                                        Темная
+                                    </button>
+                                    <button class="theme-option" type="button" data-preference="theme" data-value="system">
+                                        <i class="fas fa-circle-half-stroke" aria-hidden="true"></i>
+                                        System
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="setting-label">Акцент</span>
+                                <div class="accent-choice" role="group" aria-label="Акцентный цвет">
+                                    <button class="accent-swatch" type="button" data-preference="accent" data-value="purple-blue" style="--swatch:#7C3AED" aria-label="Purple blue"></button>
+                                    <button class="accent-swatch" type="button" data-preference="accent" data-value="blue" style="--swatch:#3B82F6" aria-label="Blue"></button>
+                                    <button class="accent-swatch" type="button" data-preference="accent" data-value="emerald" style="--swatch:#10B981" aria-label="Emerald"></button>
+                                    <button class="accent-swatch" type="button" data-preference="accent" data-value="rose" style="--swatch:#F43F5E" aria-label="Rose"></button>
+                                    <button class="accent-swatch" type="button" data-preference="accent" data-value="amber" style="--swatch:#F59E0B" aria-label="Amber"></button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="setting-label">Плотность</span>
+                                <div class="theme-choice two" role="group" aria-label="Плотность интерфейса">
+                                    <button class="theme-option" type="button" data-preference="density" data-value="comfortable">Comfort</button>
+                                    <button class="theme-option" type="button" data-preference="density" data-value="compact">Compact</button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="setting-label">Движение</span>
+                                <div class="theme-choice two" role="group" aria-label="Анимации">
+                                    <button class="theme-option" type="button" data-preference="motion" data-value="normal">Normal</button>
+                                    <button class="theme-option" type="button" data-preference="motion" data-value="reduced">Reduced</button>
+                                </div>
+                            </div>
+                            <button class="setting-toggle" type="button" data-preference="backgroundGlow" data-value="toggle">
+                                <span>
+                                    <strong>Фоновое свечение</strong>
+                                    <small>Мягкий glow за карточками</small>
+                                </span>
+                                <i class="fas fa-toggle-on" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <div class="theme-choice legacy-theme hidden" role="group" aria-label="Настройка темы">
                             <button class="theme-option" type="button" data-theme-choice="light">
                                 <i class="fas fa-sun" aria-hidden="true"></i>
                                 Светлая
@@ -474,6 +529,22 @@
                         <h2>Пользователи</h2>
                         <span id="adminUserCount">0</span>
                     </div>
+                    <div class="admin-controls">
+                        <label class="search-field">
+                            <i class="fas fa-search" aria-hidden="true"></i>
+                            <input id="adminUserSearch" type="search" placeholder="Поиск по имени или email">
+                        </label>
+                        <select id="adminRoleFilter" aria-label="Фильтр роли">
+                            <option value="all">Все роли</option>
+                            <option value="admin">Admin</option>
+                            <option value="user">User</option>
+                        </select>
+                        <select id="adminStatusFilter" aria-label="Фильтр статуса">
+                            <option value="all">Все статусы</option>
+                            <option value="active">Активные</option>
+                            <option value="disabled">Отключенные</option>
+                        </select>
+                    </div>
                     <div class="admin-table-wrap">
                         <table class="admin-table">
                             <thead>
@@ -482,10 +553,12 @@
                                     <th>Имя</th>
                                     <th>Email</th>
                                     <th>Role</th>
+                                    <th>Статус</th>
                                     <th>Пользователь</th>
                                     <th>Задачи</th>
                                     <th>Привычки</th>
                                     <th>Сон</th>
+                                    <th>Действия</th>
                                 </tr>
                             </thead>
                             <tbody id="adminUsersTable"></tbody>
@@ -496,7 +569,7 @@
         </main>
 
         <nav class="bottom-nav" aria-label="Мобильная навигация">
-            <button class="bottom-link active" type="button" data-page="dashboard" aria-label="Обзор"><i class="fas fa-chart-pie" aria-hidden="true"></i></button>
+            <button class="bottom-link" type="button" data-page="dashboard" aria-label="Обзор"><i class="fas fa-chart-pie" aria-hidden="true"></i></button>
             <button class="bottom-link" type="button" data-page="tasks" aria-label="Задачи"><i class="fas fa-list-check" aria-hidden="true"></i></button>
             <button class="bottom-link" type="button" data-page="calendar" aria-label="Календарь"><i class="fas fa-calendar-days" aria-hidden="true"></i></button>
             <button class="bottom-link" type="button" data-page="habits" aria-label="Привычки"><i class="fas fa-repeat" aria-hidden="true"></i></button>

@@ -16,6 +16,7 @@ type User struct {
 	Email        string    `json:"email"`
 	Role         string    `json:"role"`
 	Theme        string    `json:"theme"`
+	Disabled     bool      `json:"disabled"`
 	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -45,6 +46,7 @@ type AdminUserSummary struct {
 	Name          string    `json:"name"`
 	Email         string    `json:"email"`
 	Role          string    `json:"role"`
+	Disabled      bool      `json:"disabled"`
 	CreatedAt     time.Time `json:"created_at"`
 	TaskCount     int       `json:"task_count"`
 	HabitCount    int       `json:"habit_count"`
@@ -54,6 +56,11 @@ type AdminUserSummary struct {
 type AdminRoleUpdate struct {
 	Role    string `json:"role"`
 	Confirm bool   `json:"confirm"`
+}
+
+type AdminStatusUpdate struct {
+	Disabled bool `json:"disabled"`
+	Confirm  bool `json:"confirm"`
 }
 
 type UserCreate struct {
@@ -80,6 +87,24 @@ type UserPasswordUpdate struct {
 
 type UserThemeUpdate struct {
 	Theme string `json:"theme" validate:"required,oneof=light dark"`
+}
+
+type UserPreferences struct {
+	UserID         int64     `json:"user_id"`
+	Theme          string    `json:"theme"`
+	Accent         string    `json:"accent"`
+	Density        string    `json:"density"`
+	Motion         string    `json:"motion"`
+	BackgroundGlow bool      `json:"backgroundGlow"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type UserPreferencesUpdate struct {
+	Theme          string `json:"theme"`
+	Accent         string `json:"accent"`
+	Density        string `json:"density"`
+	Motion         string `json:"motion"`
+	BackgroundGlow *bool  `json:"backgroundGlow"`
 }
 
 type Task struct {

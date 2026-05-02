@@ -45,10 +45,12 @@ func (db *DB) Migrate() error {
 			password_hash TEXT NOT NULL,
 			role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
 			theme TEXT NOT NULL DEFAULT 'dark' CHECK (theme IN ('light','dark')),
+			disabled BOOLEAN NOT NULL DEFAULT FALSE,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'dark'`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE`,
 		`DO $$
 		BEGIN
 			IF NOT EXISTS (
@@ -57,6 +59,15 @@ func (db *DB) Migrate() error {
 				ALTER TABLE users ADD CONSTRAINT users_theme_check CHECK (theme IN ('light','dark'));
 			END IF;
 		END $$`,
+		`CREATE TABLE IF NOT EXISTS user_preferences (
+			user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			theme TEXT NOT NULL DEFAULT 'dark' CHECK (theme IN ('dark','light','system')),
+			accent TEXT NOT NULL DEFAULT 'purple-blue' CHECK (accent IN ('purple-blue','blue','emerald','rose','amber')),
+			density TEXT NOT NULL DEFAULT 'comfortable' CHECK (density IN ('comfortable','compact')),
+			motion TEXT NOT NULL DEFAULT 'normal' CHECK (motion IN ('normal','reduced')),
+			background_glow BOOLEAN NOT NULL DEFAULT TRUE,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
 		`CREATE TABLE IF NOT EXISTS tasks (
 			id BIGSERIAL PRIMARY KEY,
 			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

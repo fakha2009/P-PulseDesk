@@ -50,6 +50,14 @@ func (s *UserService) GetByEmail(email string) (*models.User, error) {
 	return user, nil
 }
 
+func (s *UserService) GetPreferences(userID int64) (*models.UserPreferences, error) {
+	prefs, err := s.repo.GetPreferences(userID)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	return prefs, nil
+}
+
 func (s *UserService) GetWithPasswordByID(id int64) (*models.User, error) {
 	user, err := s.repo.GetWithPasswordByID(id)
 	if err != nil {
@@ -83,6 +91,27 @@ func (s *UserService) UpdateTheme(id int64, theme string) (*models.User, error) 
 		return nil, ErrUserNotFound
 	}
 	return user, nil
+}
+
+func (s *UserService) UpdatePreferences(userID int64, prefs models.UserPreferencesUpdate) (*models.UserPreferences, error) {
+	if prefs.Theme != "" && prefs.Theme != "light" && prefs.Theme != "dark" && prefs.Theme != "system" {
+		return nil, ErrInvalidTheme
+	}
+	if prefs.Accent != "" && prefs.Accent != "purple-blue" && prefs.Accent != "blue" && prefs.Accent != "emerald" && prefs.Accent != "rose" && prefs.Accent != "amber" {
+		return nil, errors.New("invalid accent")
+	}
+	if prefs.Density != "" && prefs.Density != "comfortable" && prefs.Density != "compact" {
+		return nil, errors.New("invalid density")
+	}
+	if prefs.Motion != "" && prefs.Motion != "normal" && prefs.Motion != "reduced" {
+		return nil, errors.New("invalid motion")
+	}
+
+	updated, err := s.repo.UpdatePreferences(userID, prefs)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	return updated, nil
 }
 
 func (s *UserService) Delete(id int64) error {

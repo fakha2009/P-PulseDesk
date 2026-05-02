@@ -174,6 +174,10 @@ body.sidebar-open {
     touch-action: none;
 }
 
+body.modal-open {
+    overflow: hidden;
+}
+
 button,
 input,
 textarea,
@@ -714,9 +718,41 @@ select:focus-visible {
 
 .subtask-editor-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: 22px minmax(0, 1fr) 40px;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-button);
+    background: color-mix(in srgb, var(--surface-muted), var(--surface) 20%);
+    animation: rowIn 160ms ease-out;
+}
+
+.subtask-editor-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.subtask-editor-row input[type="text"] {
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 10px;
+}
+
+.subtask-editor-row .icon-button {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+}
+
+.checklist-empty {
+    margin: 0;
+    padding: 14px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-button);
+    color: var(--muted);
+    background: color-mix(in srgb, var(--surface-muted), transparent 30%);
 }
 
 .calendar-grid {
@@ -1067,8 +1103,8 @@ select:focus-visible {
 
 .compact-form label {
     color: var(--text);
-    font-size: 0.88rem;
-    font-weight: 800;
+    font-size: 0.86rem;
+    font-weight: 700;
 }
 
 .compact-form input,
@@ -1077,16 +1113,17 @@ select:focus-visible {
 .input-shell input {
     width: 100%;
     min-height: 46px;
-    padding: 11px 13px;
-    border: 1px solid var(--border);
+    padding: 12px 14px;
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-button);
-    background: color-mix(in srgb, var(--surface-muted), var(--bg) 14%);
+    background: var(--surface-muted);
     color: var(--text);
     transition: border-color var(--ease), background var(--ease), box-shadow var(--ease);
 }
 
 .compact-form textarea {
     resize: vertical;
+    min-height: 96px;
 }
 
 .compact-form input:focus,
@@ -1095,7 +1132,7 @@ select:focus-visible {
 .input-shell input:focus {
     border-color: var(--primary);
     background: var(--surface);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary), transparent 88%);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 80%);
 }
 
 .compact-form input:disabled,
@@ -1111,6 +1148,62 @@ select:focus-visible {
     justify-content: flex-end;
     gap: var(--space-1);
     margin-top: 8px;
+}
+
+.field-message {
+    min-height: 16px;
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.field-message.error {
+    color: var(--danger);
+}
+
+.form-grid-two {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.priority-choice {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.priority-option {
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-button);
+    background: var(--surface-muted);
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 800;
+    transition: border-color var(--ease), background var(--ease), color var(--ease), transform var(--ease);
+}
+
+.priority-option:hover,
+.priority-option.active {
+    transform: translateY(-1px);
+}
+
+.priority-option.priority-low.active {
+    color: var(--blue);
+    border-color: color-mix(in srgb, var(--blue), transparent 55%);
+    background: color-mix(in srgb, var(--blue), transparent 88%);
+}
+
+.priority-option.priority-medium.active {
+    color: var(--primary-strong);
+    border-color: color-mix(in srgb, var(--primary), transparent 55%);
+    background: color-mix(in srgb, var(--primary), transparent 88%);
+}
+
+.priority-option.priority-high.active {
+    color: var(--warning);
+    border-color: color-mix(in srgb, var(--warning), transparent 50%);
+    background: color-mix(in srgb, var(--warning), transparent 86%);
 }
 
 .sleep-current {
@@ -1542,50 +1635,179 @@ select:focus-visible {
     display: none;
     align-items: center;
     justify-content: center;
-    padding: 18px;
-    background: rgba(4, 7, 13, 0.62);
-    backdrop-filter: blur(14px);
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] .modal-layer {
+    background: rgba(0, 0, 0, 0.65);
 }
 
 .modal-layer.active {
     display: flex;
+    animation: backdropIn 180ms ease-out;
 }
 
 .modal {
-    width: min(520px, 100%);
-    max-height: min(760px, calc(100dvh - 36px));
-    overflow: auto;
+    width: min(640px, calc(100vw - 24px));
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
     overscroll-behavior: contain;
     display: none;
-    padding: var(--space-3);
+    padding: 0;
     border-radius: var(--radius-modal);
     border: 1px solid var(--border);
-    background: var(--card-gradient);
-    box-shadow: var(--shadow);
+    background: var(--surface);
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+}
+
+[data-theme="dark"] .modal {
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+
+.modal form {
+    min-height: 0;
+    max-height: inherit;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal.active {
-    display: block;
-    animation: modalIn 180ms ease;
+    display: flex;
+    flex-direction: column;
+    animation: modalIn 190ms ease-out;
 }
 
 .modal-head {
-    position: sticky;
-    top: -20px;
+    flex: 0 0 auto;
     z-index: 2;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 14px;
-    padding: 0 0 12px;
-    background: color-mix(in srgb, var(--surface), transparent 2%);
-    backdrop-filter: blur(10px);
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--primary), transparent 92%), transparent 62%),
+        color-mix(in srgb, var(--surface), var(--elevated) 28%);
 }
 
 .modal-head h2 {
     margin: 0;
     font-size: 1.2rem;
+}
+
+.modal-head p {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.modal-title-block {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.modal-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 42px;
+    color: #fff;
+    background: var(--accent-gradient);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--primary), transparent 76%);
+}
+
+.modal-head .icon-button {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+}
+
+.modal-body {
+    min-height: 0;
+    overflow: auto;
+    padding: 22px 24px;
+    display: grid;
+    gap: 24px;
+    overscroll-behavior: contain;
+}
+
+.modal-footer {
+    flex: 0 0 auto;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface), var(--elevated) 22%);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.form-section {
+    min-width: 0;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--surface-muted), var(--surface) 24%);
+    display: grid;
+    gap: 10px;
+}
+
+.form-section legend {
+    padding: 0 6px;
+    color: var(--text);
+    font-size: 0.84rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.form-section > p {
+    margin: -2px 0 4px;
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.checklist-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.checklist-head span {
+    color: var(--muted);
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.color-input-row {
+    min-height: 48px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-button);
+    background: var(--surface-muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.color-input-row input[type="color"] {
+    width: 44px;
+    min-height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: transparent;
 }
 
 .confirm-modal p {
@@ -1791,11 +2013,13 @@ select:focus-visible {
     display: none;
 }
 
-.btn.loading .btn-text {
+.btn.loading .btn-text,
+.btn.is-loading .btn-text {
     display: none;
 }
 
-.btn.loading .btn-loading {
+.btn.loading .btn-loading,
+.btn.is-loading .btn-loading {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -1815,11 +2039,31 @@ select:focus-visible {
 @keyframes modalIn {
     from {
         opacity: 0;
-        transform: translateY(8px) scale(0.98);
+        transform: translateY(8px) scale(0.96);
     }
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes backdropIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes rowIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
@@ -2180,14 +2424,42 @@ select:focus-visible {
     }
 
     .modal {
-        width: 100%;
+        width: calc(100vw - 20px);
         max-height: calc(100dvh - 20px);
-        padding: 16px;
-        border-radius: 16px;
+        padding: 0;
+        border-radius: var(--radius-modal);
     }
 
     .modal-head {
-        top: -16px;
+        padding: 16px;
+    }
+
+    .modal-icon {
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
+        border-radius: 12px;
+    }
+
+    .modal-body {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .modal-footer {
+        padding: 12px 16px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+    }
+
+    .form-grid-two,
+    .priority-choice,
+    .theme-choice {
+        grid-template-columns: 1fr;
     }
 
     .form-actions {

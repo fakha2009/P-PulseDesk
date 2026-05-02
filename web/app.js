@@ -99,6 +99,12 @@ class ProductivityDashboard {
             this.saveTask();
         });
         document.getElementById('addSubtaskButton')?.addEventListener('click', () => this.addSubtaskEditorRow());
+        document.querySelectorAll('[data-priority-choice]').forEach((button) => {
+            button.addEventListener('click', () => {
+                document.getElementById('taskPriority').value = button.dataset.priorityChoice;
+                this.syncPriorityChoice();
+            });
+        });
 
         document.getElementById('addHabitButton')?.addEventListener('click', () => this.openHabitModal());
         document.getElementById('habitForm')?.addEventListener('submit', (event) => {
@@ -645,6 +651,8 @@ class ProductivityDashboard {
         document.getElementById('taskPriority').value = task?.priority || 'medium';
         document.getElementById('taskDueDate').value = this.taskDateValue(task?.due_date);
         document.getElementById('taskRecurrence').value = task?.recurrence || 'none';
+        this.setFormMessage('taskTitleError', '');
+        this.syncPriorityChoice();
         this.renderSubtaskEditor(task?.subtasks || []);
         this.openModal('taskModal');
     }
@@ -654,7 +662,7 @@ class ProductivityDashboard {
         if (!container) return;
         container.innerHTML = '';
         if (!subtasks.length) {
-            this.addSubtaskEditorRow();
+            container.innerHTML = '<p class="checklist-empty">Добавьте шаги, чтобы разбить задачу на части.</p>';
             return;
         }
         subtasks.forEach((subtask) => this.addSubtaskEditorRow(subtask));
@@ -663,6 +671,7 @@ class ProductivityDashboard {
     addSubtaskEditorRow(subtask = {}) {
         const container = document.getElementById('subtaskEditorList');
         if (!container) return;
+        container.querySelector('.checklist-empty')?.remove();
         const row = document.createElement('div');
         row.className = 'subtask-editor-row';
         row.innerHTML = `
@@ -672,6 +681,13 @@ class ProductivityDashboard {
         `;
         row.querySelector('button').addEventListener('click', () => row.remove());
         container.appendChild(row);
+    }
+
+    syncPriorityChoice() {
+        const value = document.getElementById('taskPriority')?.value || 'medium';
+        document.querySelectorAll('[data-priority-choice]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.priorityChoice === value);
+        });
     }
 
     readSubtaskEditor() {
@@ -687,9 +703,11 @@ class ProductivityDashboard {
     async saveTask() {
         const title = document.getElementById('taskTitle').value.trim();
         if (!title) {
+            this.setFormMessage('taskTitleError', 'Название обязательно', 'error');
             this.toast('Введите название задачи', 'error');
             return;
         }
+        this.setFormMessage('taskTitleError', '');
 
         const dueValue = document.getElementById('taskDueDate').value;
         const dueDate = dueValue ? new Date(dueValue) : null;
@@ -709,6 +727,8 @@ class ProductivityDashboard {
             due_date: dueDate ? dueDate.toISOString() : null,
         };
 
+        const button = document.getElementById('taskSubmitButton');
+        this.setLoading(button, true);
         try {
             const wasEditing = Boolean(this.editingTask);
             if (this.editingTask) {
@@ -757,6 +777,8 @@ class ProductivityDashboard {
             await Promise.all([this.loadStats(), this.loadTasks(), this.loadDashboard()]);
         } catch (error) {
             this.toast(error.message, 'error');
+        } finally {
+            this.setLoading(button, false);
         }
     }
 
@@ -917,15 +939,18 @@ class ProductivityDashboard {
         document.getElementById('habitTitle').value = habit?.title || '';
         document.getElementById('habitDescription').value = habit?.description || '';
         document.getElementById('habitColor').value = this.safeColor(habit?.color || '#4f46e5');
+        this.setFormMessage('habitTitleError', '');
         this.openModal('habitModal');
     }
 
     async saveHabit() {
         const title = document.getElementById('habitTitle').value.trim();
         if (!title) {
+            this.setFormMessage('habitTitleError', 'Название обязательно', 'error');
             this.toast('Введите название привычки', 'error');
             return;
         }
+        this.setFormMessage('habitTitleError', '');
 
         const payload = {
             title,
@@ -933,6 +958,8 @@ class ProductivityDashboard {
             color: document.getElementById('habitColor').value,
         };
 
+        const button = document.getElementById('habitSubmitButton');
+        this.setLoading(button, true);
         try {
             const wasEditing = Boolean(this.editingHabit);
             if (this.editingHabit) {
@@ -1364,6 +1391,8 @@ class ProductivityDashboard {
             await this.loadAdmin();
         } catch (error) {
             this.toast(error.message, 'error');
+        } finally {
+            this.setLoading(button, false);
         }
     }
 
@@ -1428,6 +1457,7 @@ class ProductivityDashboard {
         document.getElementById(id)?.classList.add('active');
         layer?.classList.add('active');
         layer?.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
         window.setTimeout(() => document.querySelector(`#${id} input, #${id} button`)?.focus(), 50);
     }
 
@@ -1435,7 +1465,9 @@ class ProductivityDashboard {
         const layer = document.getElementById('modalLayer');
         layer?.classList.remove('active');
         layer?.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
         document.querySelectorAll('.modal').forEach((modal) => modal.classList.remove('active'));
+        document.querySelectorAll('.modal .btn.is-loading').forEach((button) => this.setLoading(button, false));
         this.editingTask = null;
         this.editingHabit = null;
         if (this.confirmResolver) {

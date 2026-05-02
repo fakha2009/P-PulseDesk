@@ -582,58 +582,117 @@
     <div class="modal-layer" id="modalLayer" aria-hidden="true">
         <section class="modal" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="taskModalTitle">
             <div class="modal-head">
-                <h2 id="taskModalTitle">Новая задача</h2>
+                <div class="modal-title-block">
+                    <span class="modal-icon" aria-hidden="true"><i class="fas fa-list-check"></i></span>
+                    <div>
+                        <h2 id="taskModalTitle">Новая задача</h2>
+                        <p>Заполните детали и сохраните изменения</p>
+                    </div>
+                </div>
                 <button class="icon-button" type="button" data-close-modal aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
             </div>
             <form class="compact-form" id="taskForm">
-                <label for="taskTitle">Название</label>
-                <input id="taskTitle" type="text" maxlength="200" required>
-                <label for="taskDescription">Описание</label>
-                <textarea id="taskDescription" rows="3"></textarea>
-                <label for="taskPriority">Приоритет</label>
-                <select id="taskPriority">
-                    <option value="low">Низкий</option>
-                    <option value="medium">Средний</option>
-                    <option value="high">Высокий</option>
-                </select>
-                <label for="taskDueDate">Срок и время</label>
-                <input id="taskDueDate" type="datetime-local">
-                <label for="taskRecurrence">Повторение</label>
-                <select id="taskRecurrence">
-                    <option value="none">Не повторять</option>
-                    <option value="daily">Каждый день</option>
-                    <option value="weekly">Каждую неделю</option>
-                    <option value="monthly">Каждый месяц</option>
-                </select>
-                <div class="checklist-editor">
-                    <div class="section-head compact-head">
-                        <h3>Чеклист</h3>
-                        <button class="text-button" type="button" id="addSubtaskButton">Добавить пункт</button>
-                    </div>
-                    <div class="subtask-editor-list" id="subtaskEditorList"></div>
+                <div class="modal-body">
+                    <fieldset class="form-section">
+                        <legend>Основное</legend>
+                        <p>Короткое название и контекст задачи.</p>
+                        <label for="taskTitle">Название</label>
+                        <input id="taskTitle" type="text" maxlength="200" placeholder="Например: подготовить отчет" required>
+                        <span class="field-message" id="taskTitleError"></span>
+                        <label for="taskDescription">Описание</label>
+                        <textarea id="taskDescription" rows="3" placeholder="Дополнительные детали, ссылки или заметки"></textarea>
+                    </fieldset>
+
+                    <fieldset class="form-section">
+                        <legend>Планирование</legend>
+                        <p>Приоритет, срок и повторение.</p>
+                        <label for="taskPriority">Приоритет</label>
+                        <div class="priority-choice" role="group" aria-label="Приоритет задачи">
+                            <button class="priority-option priority-low" type="button" data-priority-choice="low">Низкий</button>
+                            <button class="priority-option priority-medium" type="button" data-priority-choice="medium">Средний</button>
+                            <button class="priority-option priority-high" type="button" data-priority-choice="high">Высокий</button>
+                        </div>
+                        <select class="sr-only" id="taskPriority" aria-label="Приоритет">
+                            <option value="low">Низкий</option>
+                            <option value="medium">Средний</option>
+                            <option value="high">Высокий</option>
+                        </select>
+                        <div class="form-grid-two">
+                            <div>
+                                <label for="taskDueDate">Срок и время</label>
+                                <input id="taskDueDate" type="datetime-local">
+                            </div>
+                            <div>
+                                <label for="taskRecurrence">Повторение</label>
+                                <select id="taskRecurrence">
+                                    <option value="none">Не повторять</option>
+                                    <option value="daily">Каждый день</option>
+                                    <option value="weekly">Каждую неделю</option>
+                                    <option value="monthly">Каждый месяц</option>
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="form-section checklist-editor">
+                        <legend>Чеклист</legend>
+                        <p>Добавьте шаги, чтобы разбить задачу на части.</p>
+                        <div class="checklist-head">
+                            <span>Пункты</span>
+                            <button class="text-button" type="button" id="addSubtaskButton"><i class="fas fa-plus" aria-hidden="true"></i> Добавить пункт</button>
+                        </div>
+                        <div class="subtask-editor-list" id="subtaskEditorList"></div>
+                    </fieldset>
                 </div>
-                <div class="form-actions">
+                <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
-                    <button class="btn btn-primary" type="submit">Сохранить</button>
+                    <button class="btn btn-primary" type="submit" id="taskSubmitButton">
+                        <span class="btn-text">Сохранить</span>
+                        <span class="btn-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Сохраняем</span>
+                    </button>
                 </div>
             </form>
         </section>
 
         <section class="modal" id="habitModal" role="dialog" aria-modal="true" aria-labelledby="habitModalTitle">
             <div class="modal-head">
-                <h2 id="habitModalTitle">Новая привычка</h2>
+                <div class="modal-title-block">
+                    <span class="modal-icon" aria-hidden="true"><i class="fas fa-repeat"></i></span>
+                    <div>
+                        <h2 id="habitModalTitle">Новая привычка</h2>
+                        <p>Настройте привычку и визуальный акцент</p>
+                    </div>
+                </div>
                 <button class="icon-button" type="button" data-close-modal aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
             </div>
             <form class="compact-form" id="habitForm">
-                <label for="habitTitle">Название</label>
-                <input id="habitTitle" type="text" maxlength="100" required>
-                <label for="habitDescription">Описание</label>
-                <textarea id="habitDescription" rows="3"></textarea>
-                <label for="habitColor">Цвет</label>
-                <input id="habitColor" type="color" value="#4f46e5">
-                <div class="form-actions">
+                <div class="modal-body">
+                    <fieldset class="form-section">
+                        <legend>Основное</legend>
+                        <p>Название и смысл привычки.</p>
+                        <label for="habitTitle">Название</label>
+                        <input id="habitTitle" type="text" maxlength="100" placeholder="Например: утренняя зарядка" required>
+                        <span class="field-message" id="habitTitleError"></span>
+                        <label for="habitDescription">Описание</label>
+                        <textarea id="habitDescription" rows="3" placeholder="Когда и зачем вы хотите это делать"></textarea>
+                    </fieldset>
+
+                    <fieldset class="form-section">
+                        <legend>Дополнительно</legend>
+                        <p>Выберите цвет, чтобы быстрее узнавать привычку в списках.</p>
+                        <label for="habitColor">Цвет</label>
+                        <div class="color-input-row">
+                            <input id="habitColor" type="color" value="#4f46e5">
+                            <span>Цвет привычки</span>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
-                    <button class="btn btn-primary" type="submit">Сохранить</button>
+                    <button class="btn btn-primary" type="submit" id="habitSubmitButton">
+                        <span class="btn-text">Сохранить</span>
+                        <span class="btn-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Сохраняем</span>
+                    </button>
                 </div>
             </form>
         </section>

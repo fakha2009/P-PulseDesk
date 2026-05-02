@@ -24,13 +24,19 @@
 </head>
 <body>
     <div class="app-shell">
+        <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
         <aside class="sidebar" id="sidebar" aria-label="Основная навигация">
-            <div class="brand">
-                <span class="brand-mark" aria-hidden="true"><img src="assets/logo.png" alt="" onerror="this.remove(); this.parentElement.classList.add('fallback-logo')"><span>P</span></span>
-                <div>
-                    <strong>PulseDesk</strong>
-                    <span>личная система</span>
+            <div class="sidebar-head">
+                <div class="brand">
+                    <span class="brand-mark" aria-hidden="true"><img src="assets/logo.png" alt="" onerror="this.remove(); this.parentElement.classList.add('fallback-logo')"><span>P</span></span>
+                    <div>
+                        <strong>PulseDesk</strong>
+                        <span>личная система</span>
+                    </div>
                 </div>
+                <button class="icon-button sidebar-close" type="button" id="sidebarCloseButton" aria-label="Закрыть меню">
+                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                </button>
             </div>
 
             <nav class="side-nav">
@@ -373,15 +379,20 @@
 
                 <div class="profile-grid">
                     <section class="surface-section profile-card">
-                        <div class="avatar" id="profileAvatar">U</div>
-                        <div>
-                            <h2 id="profileName">Пользователь</h2>
-                            <p id="profileEmail">email@example.com</p>
-                            <small>Дата регистрации: <span id="profileCreatedAt">-</span></small>
+                        <div class="profile-main">
+                            <div class="avatar" id="profileAvatar">U</div>
+                            <div class="profile-copy">
+                                <div class="profile-title-row">
+                                    <h2 id="profileName">Пользователь</h2>
+                                    <span class="role-badge" id="profileRole">user</span>
+                                </div>
+                                <p id="profileEmail">email@example.com</p>
+                                <small>Дата регистрации: <span id="profileCreatedAt">-</span></small>
+                            </div>
                         </div>
-                        <button class="btn btn-secondary" type="button" id="profileLogout">
+                        <button class="btn btn-secondary profile-logout" type="button" id="profileLogout">
                             <i class="fas fa-arrow-right-from-bracket" aria-hidden="true"></i>
-                            Logout
+                            Выйти
                         </button>
                     </section>
 

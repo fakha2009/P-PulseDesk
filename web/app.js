@@ -13,6 +13,7 @@ class ProductivityDashboard {
         this.pomodoroRemaining = 0;
         this.pomodoroTaskID = null;
         this.originalTitle = document.title;
+        this.sidebarTouchStartX = 0;
         this.confirmResolver = null;
         this.init();
     }
@@ -52,9 +53,18 @@ class ProductivityDashboard {
             button.addEventListener('click', () => this.showPage(button.dataset.pageJump));
         });
 
-        document.getElementById('mobileMenuButton')?.addEventListener('click', () => {
-            document.getElementById('sidebar')?.classList.toggle('open');
-        });
+        document.getElementById('mobileMenuButton')?.addEventListener('click', () => this.openSidebar());
+        document.getElementById('sidebarCloseButton')?.addEventListener('click', () => this.closeSidebar());
+        document.getElementById('sidebarBackdrop')?.addEventListener('click', () => this.closeSidebar());
+        document.getElementById('sidebar')?.addEventListener('touchstart', (event) => {
+            this.sidebarTouchStartX = event.changedTouches?.[0]?.clientX || 0;
+        }, { passive: true });
+        document.getElementById('sidebar')?.addEventListener('touchend', (event) => {
+            const endX = event.changedTouches?.[0]?.clientX || 0;
+            if (this.sidebarTouchStartX - endX > 70) {
+                this.closeSidebar();
+            }
+        }, { passive: true });
 
         document.getElementById('themeToggle')?.addEventListener('click', () => this.toggleTheme());
         document.getElementById('mobileThemeToggle')?.addEventListener('click', () => this.toggleTheme());
@@ -132,10 +142,22 @@ class ProductivityDashboard {
         document.addEventListener('click', (event) => this.handleActionClick(event));
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
-                document.getElementById('sidebar')?.classList.remove('open');
+                this.closeSidebar();
                 this.closeModal(false);
             }
         });
+    }
+
+    openSidebar() {
+        document.getElementById('sidebar')?.classList.add('open');
+        document.getElementById('sidebarBackdrop')?.classList.add('active');
+        document.body.classList.add('sidebar-open');
+    }
+
+    closeSidebar() {
+        document.getElementById('sidebar')?.classList.remove('open');
+        document.getElementById('sidebarBackdrop')?.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
     }
 
     async request(path, options = {}) {
@@ -295,7 +317,7 @@ class ProductivityDashboard {
         document.querySelectorAll('.nav-link, .bottom-link').forEach((button) => {
             button.classList.toggle('active', button.dataset.page === page);
         });
-        document.getElementById('sidebar')?.classList.remove('open');
+        this.closeSidebar();
         window.scrollTo({ top: 0, behavior: 'smooth' });
         this.loadPageData();
     }
@@ -1218,6 +1240,8 @@ class ProductivityDashboard {
         this.setText('profileName', name);
         this.setText('profileEmail', this.currentUser.email || '');
         this.setText('profileCreatedAt', this.formatDate(this.currentUser.created_at));
+        this.setText('profileRole', this.currentUser.role || 'user');
+        document.getElementById('profileRole')?.classList.toggle('role-admin', this.currentUser.role === 'admin');
         this.setText('profileAvatar', name.slice(0, 1).toUpperCase());
         document.getElementById('profileNameInput').value = name;
         document.getElementById('passwordUsername').value = this.currentUser.email || '';

@@ -15,6 +15,9 @@
     --danger: #dc2626;
     --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
     --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.07);
+    --header-height: 62px;
+    --bottom-nav-height: 66px;
+    --mobile-page-gap: calc(var(--header-height) + var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     --radius: 8px;
     --sidebar: 264px;
     --ease: 180ms ease;
@@ -57,6 +60,12 @@ body {
     line-height: 1.5;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+body.sidebar-open {
+    overflow: hidden;
+    touch-action: none;
 }
 
 button,
@@ -95,6 +104,21 @@ select:focus-visible {
     flex-direction: column;
     gap: 24px;
     z-index: 40;
+}
+
+.sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sidebar-close {
+    display: none;
+}
+
+.sidebar-backdrop {
+    display: none;
 }
 
 .brand,
@@ -284,7 +308,7 @@ select:focus-visible {
 .surface-section,
 .metric-card,
 .profile-card {
-    background: var(--surface);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface), #fff 2%), var(--surface));
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-soft);
@@ -866,8 +890,9 @@ select:focus-visible {
 }
 
 .btn-primary {
-    background: var(--primary);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--primary), #fff 8%), var(--primary));
     color: #fff;
+    box-shadow: 0 10px 26px color-mix(in srgb, var(--primary), transparent 82%);
 }
 
 .btn-primary:hover {
@@ -878,6 +903,10 @@ select:focus-visible {
     background: var(--surface-muted);
     border-color: var(--border);
     color: var(--text);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-soft);
 }
 
 .btn-danger {
@@ -907,7 +936,7 @@ select:focus-visible {
 
 .compact-form {
     display: grid;
-    gap: 10px;
+    gap: 12px;
 }
 
 .compact-form label {
@@ -921,12 +950,13 @@ select:focus-visible {
 .compact-form select,
 .input-shell input {
     width: 100%;
-    min-height: 44px;
-    padding: 10px 12px;
+    min-height: 46px;
+    padding: 11px 13px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface-muted);
     color: var(--text);
+    transition: border-color var(--ease), background var(--ease), box-shadow var(--ease);
 }
 
 .compact-form textarea {
@@ -939,6 +969,15 @@ select:focus-visible {
 .input-shell input:focus {
     border-color: var(--primary);
     background: var(--surface);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary), transparent 88%);
+}
+
+.compact-form input:disabled,
+.compact-form textarea:disabled,
+.compact-form select:disabled,
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
 }
 
 .form-actions {
@@ -986,16 +1025,59 @@ select:focus-visible {
 .profile-card {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 16px;
+}
+
+.profile-main {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.profile-copy {
+    min-width: 0;
+}
+
+.profile-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .profile-card h2 {
     margin: 0;
+    overflow-wrap: anywhere;
 }
 
 .profile-card p {
     margin: 2px 0 4px;
     color: var(--muted);
+    overflow-wrap: anywhere;
+}
+
+.profile-logout {
+    flex: 0 0 auto;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary), transparent 88%);
+    color: var(--primary);
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.role-badge.role-admin {
+    background: color-mix(in srgb, var(--warning), transparent 86%);
+    color: var(--warning);
 }
 
 .admin-stats-grid {
@@ -1487,45 +1569,86 @@ select:focus-visible {
 @media (max-width: 760px) {
     .app-shell {
         display: block;
-        padding-bottom: 78px;
+        padding-bottom: 0;
     }
 
     .sidebar {
         position: fixed;
         inset: 0 auto 0 0;
-        width: min(86vw, var(--sidebar));
+        width: min(84vw, 310px);
+        max-width: calc(100vw - 44px);
+        padding: 18px;
         transform: translateX(-102%);
-        transition: transform var(--ease);
-        box-shadow: var(--shadow);
+        transition: transform 220ms cubic-bezier(.2, .8, .2, 1);
+        box-shadow: 28px 0 70px rgba(0, 0, 0, 0.28);
+        z-index: 80;
+        will-change: transform;
     }
 
     .sidebar.open {
         transform: translateX(0);
     }
 
+    .sidebar-close {
+        display: inline-flex;
+    }
+
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        display: block;
+        pointer-events: none;
+        opacity: 0;
+        background: rgba(5, 9, 16, 0.46);
+        backdrop-filter: blur(8px);
+        transition: opacity 220ms ease;
+    }
+
+    .sidebar-backdrop.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
     .mobile-header {
-        position: sticky;
+        position: fixed;
         top: 0;
-        z-index: 30;
-        height: 62px;
-        padding: 0 14px;
+        left: 0;
+        right: 0;
+        z-index: 55;
+        height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+        padding: env(safe-area-inset-top, 0px) 14px 0;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: stretch;
+        gap: 10px;
         background: color-mix(in srgb, var(--surface), transparent 5%);
         border-bottom: 1px solid var(--border);
         backdrop-filter: blur(12px);
     }
 
     .mobile-brand {
+        min-width: 0;
+        flex: 1;
         font-weight: 800;
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-header .icon-button {
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
     }
 
     .content {
-        padding: 18px 14px;
+        padding: calc(var(--header-height) + env(safe-area-inset-top, 0px) + 18px) 14px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 28px);
+        overflow-x: clip;
     }
 
     .page-head {
@@ -1588,26 +1711,36 @@ select:focus-visible {
     }
 
     .profile-card {
-        align-items: flex-start;
+        align-items: stretch;
         flex-direction: column;
+    }
+
+    .profile-main {
+        align-items: flex-start;
+    }
+
+    .profile-logout {
+        width: 100%;
+        justify-content: center;
     }
 
     .bottom-nav {
         position: fixed;
         left: 12px;
         right: 12px;
-        bottom: 12px;
-        z-index: 50;
-        height: 58px;
+        bottom: max(10px, env(safe-area-inset-bottom, 0px));
+        z-index: 60;
+        min-height: 58px;
         padding: 6px;
         display: grid;
         grid-template-columns: repeat(6, 1fr);
         gap: 4px;
-        border-radius: var(--radius);
+        border-radius: 14px;
         border: 1px solid var(--border);
         background: color-mix(in srgb, var(--surface), transparent 6%);
         box-shadow: var(--shadow);
         backdrop-filter: blur(14px);
+        transform: translateZ(0);
     }
 
     .has-admin .bottom-nav {
@@ -1615,15 +1748,22 @@ select:focus-visible {
     }
 
     .bottom-link {
-        border-radius: 6px;
+        min-width: 0;
+        min-height: 46px;
+        border-radius: 10px;
         background: transparent;
         color: var(--muted);
         font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
     }
 
     .bottom-link.active {
-        background: var(--text);
-        color: var(--surface);
+        background: color-mix(in srgb, var(--primary), transparent 86%);
+        color: var(--primary-strong);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary), transparent 78%);
     }
 
     .admin-table {
@@ -1663,6 +1803,11 @@ select:focus-visible {
 }
 
 @media (max-width: 520px) {
+    .content {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
     .stats-grid,
     .sleep-stats-grid {
         grid-template-columns: 1fr;
@@ -1680,7 +1825,23 @@ select:focus-visible {
     .score-panel,
     .sleep-summary-card,
     .auth-panel {
-        padding: 16px;
+        padding: 15px;
+    }
+
+    .bottom-nav {
+        left: 10px;
+        right: 10px;
+        gap: 3px;
+        padding: 5px;
+    }
+
+    .bottom-link {
+        min-height: 44px;
+        font-size: 0.94rem;
+    }
+
+    .profile-main {
+        gap: 12px;
     }
 
     .form-actions {

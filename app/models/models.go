@@ -249,6 +249,7 @@ type SleepLogCreate struct {
 	SleepDate string `json:"sleep_date"`
 	BedTime   string `json:"bed_time"`
 	WakeTime  string `json:"wake_time"`
+	Quality   string `json:"quality"`
 	Note      string `json:"note"`
 }
 
@@ -256,6 +257,7 @@ type SleepLogUpdate struct {
 	SleepDate string `json:"sleep_date"`
 	BedTime   string `json:"bed_time"`
 	WakeTime  string `json:"wake_time"`
+	Quality   string `json:"quality"`
 	Note      string `json:"note"`
 }
 

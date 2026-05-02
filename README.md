@@ -44,7 +44,7 @@ The application includes:
 | 🔁 Recurring Tasks | Daily, weekly, and monthly repeating tasks |
 | ⏱️ Focus Tools | Pomodoro timer per task and deadline reminders |
 | 🔁 Habits | Track daily habits, streaks, weekly rate, monthly rate, and dashboard previews |
-| 😴 Sleep | Configure sleep goals, log sleep, calculate duration, quality, and weekly statistics |
+| 😴 Sleep Studio | Sleep hero dashboard, Sleep Score, goal tracking, quality chips, recommendations, and sleep journal |
 | 🔐 Authentication | Register, login, JWT sessions, password hashing, profile update, password change |
 | 🛡️ Admin Panel | Protected admin API, system stats, user table, role management |
 | 🗄️ Database | Supabase PostgreSQL using `database/sql` with the `pgx` driver |
@@ -175,20 +175,20 @@ Habit tracking is more than basic CRUD.
 
 ---
 
-### 😴 Sleep Tracking
+### 😴 Sleep Studio
 
-Sleep is treated as a first-class productivity metric.
+Sleep is treated as a first-class productivity metric, not a basic log form. PulseDesk turns bed time, wake time, quality, consistency, and weekly rhythm into a readable control surface.
 
 | Feature | Description |
 |---|---|
-| Target bedtime | Configure preferred sleep time |
-| Target wake time | Configure wake-up goal |
-| Sleep logs | Store daily sleep records |
-| Duration calculation | Automatically calculate sleep length |
-| Sleep quality | Poor, normal, great |
-| Weekly stats | Analyze sleep over the week |
-| Best/worst day | Highlight sleep extremes |
-| Recommendations | Suggestions based on sleep regularity |
+| Sleep Today hero | Shows today's duration, target, schedule, and status in one focused block |
+| Sleep Score | Simple 0-100 score based on duration, target fit, and consistency |
+| Target schedule | Configure bedtime, wake time, and target sleep duration |
+| Daily sleep entry | Log date, bed time, wake time, quality, and notes |
+| Quality chips | Poor, normal, good, and great quality selection with backend persistence |
+| Weekly stats | Average sleep, best day, worst day, and compliant-day streak |
+| Recommendations | Human-readable suggestions based on sleep deficit, best day, and schedule stability |
+| Sleep journal | Card-based log with date, bed/wake range, target deviation, quality, edit, and delete |
 
 ---
 

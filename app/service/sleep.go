@@ -63,7 +63,7 @@ func (s *SleepService) GetLogs(userID int64) ([]models.SleepLog, error) {
 }
 
 func (s *SleepService) CreateLog(userID int64, req models.SleepLogCreate) (*models.SleepLog, error) {
-	log, err := buildSleepLog(userID, 0, req.SleepDate, req.BedTime, req.WakeTime, req.Note)
+	log, err := buildSleepLog(userID, 0, req.SleepDate, req.BedTime, req.WakeTime, req.Quality, req.Note)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (s *SleepService) UpdateLog(userID, id int64, req models.SleepLogUpdate) (*
 		return nil, err
 	}
 
-	log, err := buildSleepLog(userID, id, req.SleepDate, req.BedTime, req.WakeTime, req.Note)
+	log, err := buildSleepLog(userID, id, req.SleepDate, req.BedTime, req.WakeTime, req.Quality, req.Note)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (s *SleepService) GetStats(userID int64) (*models.SleepStats, error) {
 	return stats, nil
 }
 
-func buildSleepLog(userID, id int64, sleepDate, bedTimeValue, wakeTimeValue, note string) (*models.SleepLog, error) {
+func buildSleepLog(userID, id int64, sleepDate, bedTimeValue, wakeTimeValue, qualityValue, note string) (*models.SleepLog, error) {
 	bedTime, err := parseDateTime(bedTimeValue)
 	if err != nil {
 		return nil, fmt.Errorf("%w: bed_time must be a valid datetime", ErrInvalidSleepLog)
@@ -185,6 +185,19 @@ func buildSleepLog(userID, id int64, sleepDate, bedTimeValue, wakeTimeValue, not
 		return nil, fmt.Errorf("%w: sleep_date must be YYYY-MM-DD", ErrInvalidSleepLog)
 	}
 
+	quality := calculateSleepQuality(duration)
+	switch strings.TrimSpace(qualityValue) {
+	case "", "auto":
+	case "poor":
+		quality = models.SleepQualityPoor
+	case "normal", "good":
+		quality = models.SleepQualityNormal
+	case "great", "excellent":
+		quality = models.SleepQualityGreat
+	default:
+		return nil, fmt.Errorf("%w: quality must be poor, normal, good, great or excellent", ErrInvalidSleepLog)
+	}
+
 	return &models.SleepLog{
 		ID:              id,
 		UserID:          userID,
@@ -192,7 +205,7 @@ func buildSleepLog(userID, id int64, sleepDate, bedTimeValue, wakeTimeValue, not
 		BedTime:         bedTime,
 		WakeTime:        wakeTime,
 		DurationMinutes: duration,
-		Quality:         calculateSleepQuality(duration),
+		Quality:         quality,
 		Note:            strings.TrimSpace(note),
 	}, nil
 }

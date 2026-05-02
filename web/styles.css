@@ -1213,6 +1213,162 @@ select:focus-visible {
     margin-bottom: 18px;
 }
 
+.sleep-hero {
+    margin-bottom: 16px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-modal);
+    background:
+        radial-gradient(circle at 88% 12%, color-mix(in srgb, #22D3EE, transparent 78%), transparent 18rem),
+        linear-gradient(135deg, color-mix(in srgb, #7C3AED, transparent 76%) 0%, color-mix(in srgb, #6366F1, transparent 82%) 45%, color-mix(in srgb, #22D3EE, transparent 86%) 100%),
+        var(--surface);
+    box-shadow: var(--shadow-soft);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+    align-items: center;
+    gap: 22px;
+}
+
+.sleep-hero h2 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1;
+}
+
+.sleep-hero-copy > p:not(.eyebrow) {
+    margin: 10px 0 0;
+    color: var(--muted);
+}
+
+.sleep-hero-meta {
+    margin-top: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.sleep-hero-meta span {
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface), transparent 26%);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+}
+
+.sleep-hero-meta b {
+    color: var(--text);
+}
+
+.sleep-score-card {
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--surface), transparent 10%);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    backdrop-filter: blur(10px);
+}
+
+.sleep-score-card strong {
+    display: block;
+    font-size: 1.05rem;
+}
+
+.sleep-score-card p {
+    margin: 5px 0 0;
+    color: var(--muted);
+}
+
+.sleep-score-ring {
+    --score-color: var(--primary);
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    flex: 0 0 116px;
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(circle, var(--surface) 57%, transparent 58%),
+        conic-gradient(var(--score-color) calc(var(--score) * 1%), color-mix(in srgb, var(--surface-muted), transparent 12%) 0);
+    box-shadow: inset 0 0 0 1px var(--border);
+    transition: background 360ms ease;
+}
+
+.sleep-score-ring[data-score="great"] {
+    --score-color: var(--success);
+}
+
+.sleep-score-ring[data-score="normal"] {
+    --score-color: var(--warning);
+}
+
+.sleep-score-ring[data-score="weak"],
+.sleep-score-ring[data-score="poor"] {
+    --score-color: var(--danger);
+}
+
+.sleep-score-ring span {
+    font-size: 2rem;
+    font-weight: 900;
+}
+
+.sleep-settings-card #sleepSettingsForm {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.sleep-settings-card.editing #sleepSettingsForm {
+    display: grid;
+}
+
+.sleep-quality-choice {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.sleep-quality-chip {
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-button);
+    background: var(--surface-muted);
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 800;
+    transition: transform var(--ease), border-color var(--ease), background var(--ease), color var(--ease);
+}
+
+.sleep-quality-chip:hover,
+.sleep-quality-chip.active {
+    transform: translateY(-1px);
+}
+
+.sleep-quality-chip.quality-poor.active {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger), transparent 88%);
+    border-color: color-mix(in srgb, var(--danger), transparent 50%);
+}
+
+.sleep-quality-chip.quality-normal.active,
+.sleep-quality-chip.quality-good.active {
+    color: #22D3EE;
+    background: color-mix(in srgb, #22D3EE, transparent 88%);
+    border-color: color-mix(in srgb, #22D3EE, transparent 50%);
+}
+
+.sleep-quality-chip.quality-great.active {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success), transparent 88%);
+    border-color: color-mix(in srgb, var(--success), transparent 50%);
+}
+
 .sleep-current > div {
     padding: 14px;
     border-radius: var(--radius-button);
@@ -1239,6 +1395,41 @@ select:focus-visible {
 .sleep-progress-panel p {
     margin: 0;
     color: var(--muted);
+}
+
+.recommendation-panel {
+    gap: 16px;
+}
+
+.recommendation-item {
+    padding: 13px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-button);
+    background: color-mix(in srgb, var(--surface-muted), var(--surface) 26%);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: var(--muted);
+}
+
+.recommendation-item i {
+    margin-top: 2px;
+    color: #22D3EE;
+}
+
+.sleep-log-card {
+    align-items: flex-start;
+    transition: transform var(--ease), border-color var(--ease), box-shadow var(--ease);
+}
+
+.sleep-log-card:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, #22D3EE, var(--border) 66%);
+    box-shadow: var(--shadow-soft);
+}
+
+.sleep-empty .btn {
+    margin-top: 12px;
 }
 
 .profile-card {
@@ -2117,6 +2308,10 @@ select:focus-visible {
         grid-template-columns: 1fr;
     }
 
+    .sleep-hero {
+        grid-template-columns: 1fr;
+    }
+
     .calendar-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2275,6 +2470,10 @@ select:focus-visible {
         grid-template-columns: 1fr;
     }
 
+    .sleep-quality-choice {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .profile-card {
         align-items: stretch;
         flex-direction: column;
@@ -2398,8 +2597,20 @@ select:focus-visible {
     .surface-section,
     .score-panel,
     .sleep-summary-card,
+    .sleep-hero,
     .auth-panel {
         padding: 15px;
+    }
+
+    .sleep-score-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .sleep-score-ring {
+        width: 96px;
+        height: 96px;
+        flex-basis: 96px;
     }
 
     .bottom-nav {

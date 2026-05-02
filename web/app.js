@@ -130,10 +130,16 @@ class ProductivityDashboard {
             event.preventDefault();
             this.saveSleepSettings();
         });
+        document.getElementById('toggleSleepSettings')?.addEventListener('click', () => {
+            document.querySelector('.sleep-settings-card')?.classList.toggle('editing');
+        });
 
         document.getElementById('sleepLogForm')?.addEventListener('submit', (event) => {
             event.preventDefault();
             this.saveSleepLog();
+        });
+        document.querySelectorAll('[data-sleep-quality]').forEach((button) => {
+            button.addEventListener('click', () => this.setSleepQuality(button.dataset.sleepQuality));
         });
 
         document.getElementById('cancelSleepEdit')?.addEventListener('click', () => this.cancelSleepEdit());
@@ -1043,6 +1049,7 @@ class ProductivityDashboard {
         this.setText('dashboardSleepTarget', this.formatMinutes(target));
         document.getElementById('targetBedTime').value = bed;
         document.getElementById('targetWakeTime').value = wake;
+        this.setText('sleepHeroSchedule', `${bed} → ${wake}`);
     }
 
     renderSleepStats() {
@@ -1054,20 +1061,68 @@ class ProductivityDashboard {
         const avg = stats.average_duration_minutes || 0;
         const progress = target ? Math.min((todayDuration || avg) / target, 1.2) * 100 : 0;
         const avgProgress = target ? Math.min(avg / target, 1.2) * 100 : 0;
+        const score = this.calculateSleepScore(stats);
+        const heroDuration = stats.today ? `${this.formatMinutes(todayDuration)} из ${this.formatMinutes(target)}` : 'Нет данных';
+        const heroSubtitle = stats.today ? this.sleepDeltaText(todayDuration, target) : 'Добавьте первую запись сна';
 
         this.setText('weeklySleepAverage', this.formatMinutes(avg));
         this.setText('dashboardSleepDuration', todayDuration ? this.formatMinutes(todayDuration) : this.formatMinutes(avg));
         this.setText('dashboardSleepStatus', this.qualityText(stats.today?.quality || stats.status));
-        this.setText('sleepAverage', this.formatMinutes(avg));
-        this.setText('sleepBestDay', stats.best_day ? `${this.formatDate(stats.best_day.sleep_date)} · ${this.formatMinutes(stats.best_day.duration_minutes)}` : 'нет');
-        this.setText('sleepWorstDay', stats.worst_day ? `${this.formatDate(stats.worst_day.sleep_date)} · ${this.formatMinutes(stats.worst_day.duration_minutes)}` : 'нет');
-        this.setText('sleepCompliantDays', `${stats.compliant_days || 0}/7`);
-        this.setText('sleepRecommendation', stats.recommendation || 'Добавьте первую запись сна.');
+        this.setText('sleepAverage', avg ? this.formatMinutes(avg) : 'Нет данных');
+        this.setText('sleepBestDay', stats.best_day ? `${this.weekdayName(stats.best_day.sleep_date)} · ${this.formatMinutes(stats.best_day.duration_minutes)}` : 'Нет данных');
+        this.setText('sleepWorstDay', stats.worst_day ? `${this.weekdayName(stats.worst_day.sleep_date)} · ${this.formatMinutes(stats.worst_day.duration_minutes)}` : 'Нет данных');
+        this.setText('sleepCompliantDays', stats.days_logged ? `${stats.compliant_days || 0}/${stats.days_logged}` : 'Нет данных');
+        this.setText('sleepHeroDuration', heroDuration);
+        this.setText('sleepHeroSubtitle', heroSubtitle);
+        this.setText('sleepHeroStatus', stats.today ? this.qualityText(stats.today.quality) : 'Нет данных');
+        this.setText('sleepScoreValue', score === null ? '—' : score);
+        this.setText('sleepScoreText', this.sleepScoreText(score));
+        this.renderSleepRecommendations(stats, target);
         this.setText('sleepModeStatus', this.qualityText(stats.status));
         this.setText('sleepQualityLabel', this.qualityText(stats.status));
 
         document.getElementById('dashboardSleepProgress').style.width = `${Math.min(progress, 100)}%`;
         document.getElementById('sleepProgress').style.width = `${Math.min(avgProgress, 100)}%`;
+        const scoreRing = document.querySelector('.sleep-score-ring');
+        if (scoreRing) {
+            scoreRing.style.setProperty('--score', score === null ? 0 : score);
+            scoreRing.dataset.score = this.sleepScoreTone(score);
+        }
+    }
+
+    renderSleepRecommendations(stats, target) {
+        const container = document.getElementById('sleepRecommendation');
+        if (!container) return;
+        if (!stats?.days_logged) {
+            container.innerHTML = `
+                <div class="recommendation-item">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                    <span>Добавьте 3-5 записей сна, чтобы получить рекомендации.</span>
+                </div>
+            `;
+            return;
+        }
+
+        const items = [];
+        const avgDelta = (stats.average_duration_minutes || 0) - target;
+        if (avgDelta < 0) {
+            items.push(['fa-clock', `Средний сон ниже цели на ${this.formatMinutes(Math.abs(avgDelta))}.`]);
+        } else {
+            items.push(['fa-check-circle', `Средний сон достигает цели: +${this.formatMinutes(avgDelta)}.`]);
+        }
+        if (stats.best_day) {
+            items.push(['fa-award', `Лучший день: ${this.weekdayName(stats.best_day.sleep_date)} (${this.formatMinutes(stats.best_day.duration_minutes)}).`]);
+        }
+        if (stats.recommendation) {
+            items.push(['fa-lightbulb', stats.recommendation]);
+        }
+
+        container.innerHTML = items.map(([icon, text]) => `
+            <div class="recommendation-item">
+                <i class="fas ${icon}" aria-hidden="true"></i>
+                <span>${this.escape(text)}</span>
+            </div>
+        `).join('');
     }
 
     renderSleepLogs() {
@@ -1077,16 +1132,23 @@ class ProductivityDashboard {
         const logs = this.sleepLogs || [];
         this.setText('sleepLogCount', `${logs.length} ${this.plural(logs.length, 'запись', 'записи', 'записей')}`);
         if (!logs.length) {
-            container.innerHTML = this.emptyState('fa-moon', 'История сна пуста', 'Запишите первую ночь, чтобы увидеть статистику за неделю.');
+            container.innerHTML = `
+                <div class="empty-state sleep-empty">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                    <h3>Журнал сна пуст</h3>
+                    <p>Добавьте первую запись, чтобы увидеть статистику и рекомендации.</p>
+                    <button class="btn btn-primary compact-btn" type="button" onclick="document.getElementById('sleepLogForm')?.scrollIntoView({behavior:'smooth', block:'center'})">Записать сон</button>
+                </div>
+            `;
             return;
         }
 
         container.innerHTML = logs.map((log) => `
-            <article class="list-item sleep-log" data-id="${log.id}">
+            <article class="list-item sleep-log-card" data-id="${log.id}">
                 <span class="sleep-quality-dot quality-${log.quality}"></span>
                 <div class="item-body">
                     <h3>${this.formatDate(log.sleep_date)} · ${this.formatMinutes(log.duration_minutes)}</h3>
-                    <p>${this.timeOnly(log.bed_time)} - ${this.timeOnly(log.wake_time)} · ${this.qualityText(log.quality)}</p>
+                    <p>${this.timeOnly(log.bed_time)} - ${this.timeOnly(log.wake_time)} · ${this.sleepDeltaText(log.duration_minutes, this.sleepStats?.target_duration_minutes || 480)} · ${this.qualityText(log.quality)}</p>
                     ${log.note ? `<p class="note">${this.escape(log.note)}</p>` : ''}
                 </div>
                 <div class="item-actions">
@@ -1121,6 +1183,7 @@ class ProductivityDashboard {
             sleep_date: document.getElementById('sleepDate').value,
             bed_time: document.getElementById('bedTime').value,
             wake_time: document.getElementById('wakeTime').value,
+            quality: document.getElementById('sleepQuality').value,
             note: document.getElementById('sleepNote').value.trim(),
         };
 
@@ -1153,6 +1216,7 @@ class ProductivityDashboard {
         document.getElementById('bedTime').value = this.toLocalDateTimeValue(log.bed_time);
         document.getElementById('wakeTime').value = this.toLocalDateTimeValue(log.wake_time);
         document.getElementById('sleepNote').value = log.note || '';
+        this.setSleepQuality(log.quality || 'normal');
         this.setText('sleepLogSubmit', 'Сохранить запись');
         document.getElementById('cancelSleepEdit')?.classList.remove('hidden');
         document.getElementById('sleepLogForm')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1162,6 +1226,7 @@ class ProductivityDashboard {
         this.editingSleepLog = null;
         this.setDefaultSleepInputs();
         document.getElementById('sleepNote').value = '';
+        this.setSleepQuality('normal');
         this.setText('sleepLogSubmit', 'Записать сон');
         document.getElementById('cancelSleepEdit')?.classList.add('hidden');
     }
@@ -1650,6 +1715,7 @@ class ProductivityDashboard {
         if (sleepDateInput) sleepDateInput.value = this.dateInputValue(sleepDate);
         if (bedInput) bedInput.value = this.localDateTimeInputValue(bed);
         if (wakeInput) wakeInput.value = this.localDateTimeInputValue(wake);
+        this.setSleepQuality('normal');
     }
 
     setTaskDateBounds() {
@@ -1815,6 +1881,54 @@ class ProductivityDashboard {
             great: 'отлично',
             empty: 'нет данных',
         }[quality] || 'нет данных';
+    }
+
+    setSleepQuality(quality) {
+        const value = ['poor', 'normal', 'good', 'great'].includes(quality) ? quality : 'normal';
+        const input = document.getElementById('sleepQuality');
+        if (input) input.value = value;
+        document.querySelectorAll('[data-sleep-quality]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.sleepQuality === value);
+        });
+    }
+
+    calculateSleepScore(stats) {
+        if (!stats?.days_logged) return null;
+        const target = stats.target_duration_minutes || 480;
+        const avg = stats.average_duration_minutes || 0;
+        const durationScore = Math.max(0, 100 - Math.round(Math.abs(avg - target) / 6));
+        const consistencyScore = Math.round(((stats.compliant_days || 0) / Math.max(1, stats.days_logged)) * 100);
+        const qualityBonus = stats.status === 'great' ? 8 : stats.status === 'poor' ? -14 : 0;
+        return Math.max(0, Math.min(100, Math.round(durationScore * 0.65 + consistencyScore * 0.35 + qualityBonus)));
+    }
+
+    sleepScoreText(score) {
+        if (score === null) return 'Добавьте записи сна, чтобы получить оценку';
+        if (score >= 85) return 'Отличный режим. Продолжайте держать ритм.';
+        if (score >= 70) return 'Нормально. Есть небольшой запас для стабильности.';
+        if (score >= 50) return 'Слабый режим. Стоит лечь раньше и выровнять график.';
+        return 'Плохо. Сфокусируйтесь на длительности и регулярности.';
+    }
+
+    sleepScoreTone(score) {
+        if (score === null) return 'empty';
+        if (score >= 85) return 'great';
+        if (score >= 70) return 'normal';
+        if (score >= 50) return 'weak';
+        return 'poor';
+    }
+
+    sleepDeltaText(duration, target) {
+        if (!duration) return 'Нет данных';
+        const diff = duration - target;
+        if (Math.abs(diff) < 10) return 'точно по цели';
+        return diff > 0 ? `выше цели на ${this.formatMinutes(diff)}` : `ниже цели на ${this.formatMinutes(Math.abs(diff))}`;
+    }
+
+    weekdayName(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return this.formatDate(value);
+        return new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: '2-digit', month: 'short' }).format(date);
     }
 
     plural(count, one, few, many) {

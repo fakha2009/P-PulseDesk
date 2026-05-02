@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuildSleepLogAddsNextDayWhenWakeBeforeBed(t *testing.T) {
-	log, err := buildSleepLog(1, 0, "2026-04-30", "2026-04-30T23:30", "2026-04-30T07:00", "")
+	log, err := buildSleepLog(1, 0, "2026-04-30", "2026-04-30T23:30", "2026-04-30T07:00", "", "")
 	if err != nil {
 		t.Fatalf("buildSleepLog returned error: %v", err)
 	}

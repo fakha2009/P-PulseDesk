@@ -272,10 +272,34 @@
                     </div>
                 </div>
 
+                <section class="sleep-hero">
+                    <div class="sleep-hero-copy">
+                        <p class="eyebrow">Сон сегодня</p>
+                        <h2 id="sleepHeroDuration">Нет данных</h2>
+                        <p id="sleepHeroSubtitle">Добавьте первую запись сна</p>
+                        <div class="sleep-hero-meta">
+                            <span><i class="fas fa-clock" aria-hidden="true"></i> <b id="sleepHeroSchedule">23:00 → 07:00</b></span>
+                            <span><i class="fas fa-circle-info" aria-hidden="true"></i> <b id="sleepHeroStatus">Нет данных</b></span>
+                        </div>
+                    </div>
+                    <div class="sleep-score-card">
+                        <div class="sleep-score-ring" style="--score: 0" aria-label="Sleep Score">
+                            <span id="sleepScoreValue">—</span>
+                        </div>
+                        <div>
+                            <strong>Sleep Score</strong>
+                            <p id="sleepScoreText">Добавьте записи сна, чтобы получить оценку</p>
+                        </div>
+                    </div>
+                </section>
+
                 <div class="sleep-layout">
-                    <section class="surface-section">
+                    <section class="surface-section sleep-settings-card">
                         <div class="section-head">
-                            <h2>Текущий режим</h2>
+                            <div>
+                                <h2>Режим сна</h2>
+                                <span>Целевое время и длительность</span>
+                            </div>
                             <span class="quality-pill" id="sleepModeStatus">Загрузка</span>
                         </div>
                         <div class="sleep-current">
@@ -292,6 +316,7 @@
                                 <strong id="currentSleepTarget">8ч 00м</strong>
                             </div>
                         </div>
+                        <button class="btn btn-secondary btn-full" type="button" id="toggleSleepSettings">Изменить режим</button>
                         <form class="compact-form" id="sleepSettingsForm">
                             <label for="targetBedTime">Целевое время сна</label>
                             <input id="targetBedTime" type="time" required>
@@ -303,7 +328,10 @@
 
                     <section class="surface-section">
                         <div class="section-head">
-                            <h2>Ежедневная отметка</h2>
+                            <div>
+                                <h2>Ежедневная запись</h2>
+                                <span>Дата, время, качество и заметка</span>
+                            </div>
                             <button class="text-button hidden" type="button" id="cancelSleepEdit">Отменить</button>
                         </div>
                         <form class="compact-form" id="sleepLogForm">
@@ -313,8 +341,16 @@
                             <input id="bedTime" type="datetime-local" required>
                             <label for="wakeTime">Проснулся</label>
                             <input id="wakeTime" type="datetime-local" required>
+                            <label for="sleepQuality">Качество сна</label>
+                            <div class="sleep-quality-choice" role="group" aria-label="Качество сна">
+                                <button class="sleep-quality-chip quality-poor" type="button" data-sleep-quality="poor">Плохо</button>
+                                <button class="sleep-quality-chip quality-normal" type="button" data-sleep-quality="normal">Нормально</button>
+                                <button class="sleep-quality-chip quality-good" type="button" data-sleep-quality="good">Хорошо</button>
+                                <button class="sleep-quality-chip quality-great" type="button" data-sleep-quality="great">Отлично</button>
+                            </div>
+                            <input class="sr-only" id="sleepQuality" type="text" value="normal" aria-label="Качество сна">
                             <label for="sleepNote">Заметка</label>
-                            <textarea id="sleepNote" rows="3" placeholder="Например: без кофе после 16:00"></textarea>
+                            <textarea id="sleepNote" rows="3" placeholder="Например: без кофе после 16:00, проснулся бодро"></textarea>
                             <button class="btn btn-primary" type="submit" id="sleepLogSubmit">Записать сон</button>
                         </form>
                     </section>
@@ -353,14 +389,17 @@
 
                 <section class="surface-section">
                     <div class="section-head">
-                        <h2>Прогресс и рекомендации</h2>
+                        <div>
+                            <h2>Рекомендации</h2>
+                            <span>Подсказки на основе последних записей</span>
+                        </div>
                         <span class="quality-pill" id="sleepQualityLabel">нет данных</span>
                     </div>
-                    <div class="sleep-progress-panel">
+                    <div class="sleep-progress-panel recommendation-panel">
                         <div class="progress-track large" aria-label="Прогресс регулярности сна">
                             <span id="sleepProgress"></span>
                         </div>
-                        <p id="sleepRecommendation">Добавьте первую запись сна.</p>
+                        <div id="sleepRecommendation">Добавьте первую запись сна.</div>
                     </div>
                 </section>
 

@@ -106,9 +106,21 @@ func (db *DB) Migrate() error {
 			title VARCHAR(255) NOT NULL,
 			description TEXT,
 			color VARCHAR(32),
+			proof_type TEXT NOT NULL DEFAULT 'none',
+			proof_prompt TEXT NULL,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
+		`ALTER TABLE habits ADD COLUMN IF NOT EXISTS proof_type TEXT NOT NULL DEFAULT 'none'`,
+		`ALTER TABLE habits ADD COLUMN IF NOT EXISTS proof_prompt TEXT NULL`,
+		`DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'habits_proof_type_check'
+			) THEN
+				ALTER TABLE habits ADD CONSTRAINT habits_proof_type_check CHECK (proof_type IN ('none','note','photo','audio','photo_or_audio'));
+			END IF;
+		END $$`,
 		`CREATE TABLE IF NOT EXISTS habit_checks (
 			id BIGSERIAL PRIMARY KEY,
 			habit_id BIGINT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
@@ -116,6 +128,21 @@ func (db *DB) Migrate() error {
 			check_date DATE NOT NULL,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			UNIQUE (habit_id, check_date)
+		)`,
+		`CREATE TABLE IF NOT EXISTS habit_proofs (
+			id BIGSERIAL PRIMARY KEY,
+			habit_id BIGINT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			completion_date DATE NOT NULL,
+			type TEXT NOT NULL CHECK (type IN ('note','photo','audio')),
+			text_note TEXT NULL,
+			file_url TEXT NULL,
+			file_name TEXT NULL,
+			mime_type TEXT NULL,
+			file_size BIGINT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE (habit_id, completion_date)
 		)`,
 		`CREATE TABLE IF NOT EXISTS sleep_settings (
 			id BIGSERIAL PRIMARY KEY,
@@ -146,6 +173,9 @@ func (db *DB) Migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_habits_user_id ON habits(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_habit_checks_habit_id ON habit_checks(habit_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_habit_checks_user_id ON habit_checks(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_habit_proofs_habit_id ON habit_proofs(habit_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_habit_proofs_user_id ON habit_proofs(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_habit_proofs_completion_date ON habit_proofs(completion_date)`,
 		`CREATE INDEX IF NOT EXISTS idx_sleep_logs_user_id ON sleep_logs(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_sleep_logs_sleep_date ON sleep_logs(sleep_date)`,
 	}

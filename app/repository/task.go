@@ -138,10 +138,8 @@ func (r *TaskRepository) Update(id int64, task models.TaskUpdate) (*models.Task,
 		args = append(args, task.Priority)
 		query += ", priority = " + placeholder(len(args))
 	}
-	if task.DueDate != nil {
-		args = append(args, task.DueDate)
-		query += ", due_date = " + placeholder(len(args))
-	}
+	args = append(args, task.DueDate)
+	query += ", due_date = " + placeholder(len(args))
 	if task.Recurrence != "" {
 		args = append(args, normalizedRecurrence(task.Recurrence))
 		query += ", recurrence = " + placeholder(len(args))

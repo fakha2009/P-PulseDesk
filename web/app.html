@@ -725,12 +725,79 @@
                             <span>Цвет привычки</span>
                         </div>
                     </fieldset>
+
+                    <fieldset class="form-section">
+                        <legend>Подтверждение выполнения</legend>
+                        <p>Оставьте обычную галочку или попросите заметку, фото либо аудио.</p>
+                        <label for="habitProofType">Тип подтверждения</label>
+                        <select id="habitProofType">
+                            <option value="none">Обычная галочка</option>
+                            <option value="note">Текстовая заметка</option>
+                            <option value="photo">Фото</option>
+                            <option value="audio">Аудио</option>
+                            <option value="photo_or_audio">Фото или аудио</option>
+                        </select>
+                        <label for="habitProofPrompt">Подсказка</label>
+                        <input id="habitProofPrompt" type="text" maxlength="255" placeholder="Например: перескажи тему на диктофон">
+                    </fieldset>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
                     <button class="btn btn-primary" type="submit" id="habitSubmitButton">
                         <span class="btn-text">Сохранить</span>
                         <span class="btn-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Сохраняем</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="modal proof-modal" id="proofModal" role="dialog" aria-modal="true" aria-labelledby="proofModalTitle">
+            <div class="modal-head">
+                <div class="modal-title-block">
+                    <span class="modal-icon" aria-hidden="true"><i class="fas fa-circle-check"></i></span>
+                    <div>
+                        <h2 id="proofModalTitle">Подтверждение привычки</h2>
+                        <p id="proofRequirement">Добавьте подтверждение и отметьте день выполненным</p>
+                    </div>
+                </div>
+                <button class="icon-button" type="button" data-close-modal aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            </div>
+            <form class="compact-form" id="proofForm">
+                <div class="modal-body">
+                    <section class="proof-context">
+                        <strong id="proofHabitTitle">Привычка</strong>
+                        <p id="proofPromptText">Выберите подходящий формат подтверждения.</p>
+                    </section>
+                    <fieldset class="form-section proof-type-section" id="proofTypeSection">
+                        <legend>Формат</legend>
+                        <div class="proof-choice" role="group" aria-label="Тип подтверждения">
+                            <button class="proof-option" type="button" data-proof-choice="photo"><i class="fas fa-image" aria-hidden="true"></i> Фото</button>
+                            <button class="proof-option" type="button" data-proof-choice="audio"><i class="fas fa-microphone" aria-hidden="true"></i> Аудио</button>
+                        </div>
+                    </fieldset>
+                    <fieldset class="form-section" id="proofNoteSection">
+                        <legend>Заметка</legend>
+                        <label for="proofNote">Короткий отчет</label>
+                        <textarea id="proofNote" rows="4" placeholder="Напишите, что сделали сегодня"></textarea>
+                    </fieldset>
+                    <fieldset class="form-section" id="proofFileSection">
+                        <legend>Файл</legend>
+                        <label for="proofFile">Загрузить файл</label>
+                        <input id="proofFile" type="file">
+                        <div class="proof-preview" id="proofPreview">
+                            <p>Файл еще не выбран.</p>
+                        </div>
+                        <div class="audio-recorder" id="audioRecorder">
+                            <button class="btn btn-secondary" type="button" id="startAudioRecord"><i class="fas fa-microphone" aria-hidden="true"></i> Начать запись</button>
+                            <button class="btn btn-secondary" type="button" id="stopAudioRecord" disabled><i class="fas fa-stop" aria-hidden="true"></i> Остановить</button>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
+                    <button class="btn btn-primary" type="submit" id="proofSubmitButton">
+                        <span class="btn-text">Сохранить и отметить</span>
+                        <span class="btn-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Загружаем</span>
                     </button>
                 </div>
             </form>

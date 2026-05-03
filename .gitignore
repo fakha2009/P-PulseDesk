@@ -4,6 +4,7 @@
 app.exe
 app.exe~
 *.log
+uploads/
 web/.vercel
 web/dashboard.html
 web/tasks.html

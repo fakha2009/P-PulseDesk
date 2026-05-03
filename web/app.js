@@ -15,6 +15,11 @@ class ProductivityDashboard {
         this.preferences = this.defaultPreferences();
         this.editingTask = null;
         this.editingHabit = null;
+        this.proofHabit = null;
+        this.proofType = 'note';
+        this.recordedAudioFile = null;
+        this.mediaRecorder = null;
+        this.audioChunks = [];
         this.editingSleepLog = null;
         this.searchTimer = null;
         this.clockTimer = null;
@@ -111,6 +116,16 @@ class ProductivityDashboard {
             event.preventDefault();
             this.saveHabit();
         });
+        document.getElementById('proofForm')?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.saveHabitProof();
+        });
+        document.querySelectorAll('[data-proof-choice]').forEach((button) => {
+            button.addEventListener('click', () => this.setProofType(button.dataset.proofChoice));
+        });
+        document.getElementById('proofFile')?.addEventListener('change', () => this.renderProofPreview());
+        document.getElementById('startAudioRecord')?.addEventListener('click', () => this.startAudioRecording());
+        document.getElementById('stopAudioRecord')?.addEventListener('click', () => this.stopAudioRecording());
 
         document.querySelectorAll('[data-filter]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -651,7 +666,7 @@ class ProductivityDashboard {
     openTaskModal(task = null) {
         this.editingTask = task;
         this.setText('taskModalTitle', task ? 'Редактировать задачу' : 'Новая задача');
-        this.setTaskDateBounds();
+        this.setTaskDateBounds(Boolean(task));
         document.getElementById('taskTitle').value = task?.title || '';
         document.getElementById('taskDescription').value = task?.description || '';
         document.getElementById('taskPriority').value = task?.priority || 'medium';
@@ -717,7 +732,7 @@ class ProductivityDashboard {
 
         const dueValue = document.getElementById('taskDueDate').value;
         const dueDate = dueValue ? new Date(dueValue) : null;
-        if (dueDate && dueDate.getTime() < Date.now()) {
+        if (!this.editingTask && dueDate && dueDate.getTime() < Date.now()) {
             this.toast('Срок задачи не может быть в прошлом', 'error');
             return;
         }
@@ -915,6 +930,12 @@ class ProductivityDashboard {
 
     habitTemplate(habit, compact = false) {
         const color = this.safeColor(habit.color);
+        const requiresProof = this.habitRequiresProof(habit);
+        const proofLabel = this.proofTypeLabel(habit.proof_type);
+        const action = requiresProof && !habit.checked_today ? 'habit-proof' : 'habit-toggle';
+        const actionLabel = requiresProof
+            ? (habit.checked_today ? 'Подтверждено' : 'Добавить подтверждение')
+            : (habit.checked_today ? 'Отмечено' : 'Отметить');
         return `
             <article class="list-item" data-id="${habit.id}">
                 <span class="habit-dot" style="--habit-color: ${color}"></span>
@@ -924,10 +945,11 @@ class ProductivityDashboard {
                     <div class="item-meta">
                         <span><i class="fas fa-fire" aria-hidden="true"></i> ${habit.streak || 0} дней</span>
                         <span>${Math.round(habit.weekly_rate || 0)}% за неделю</span>
+                        ${requiresProof ? `<span class="proof-badge ${habit.checked_today ? 'verified' : ''}"><i class="fas ${habit.checked_today ? 'fa-circle-check' : 'fa-lock'}" aria-hidden="true"></i> ${this.escape(proofLabel)}</span>` : ''}
                     </div>
                 </div>
-                <button class="btn ${habit.checked_today ? 'btn-secondary' : 'btn-primary'} compact-btn" type="button" data-action="habit-toggle" data-id="${habit.id}">
-                    ${habit.checked_today ? 'Отмечено' : 'Отметить'}
+                <button class="btn ${habit.checked_today ? 'btn-secondary' : 'btn-primary'} compact-btn proof-action-btn" type="button" data-action="${action}" data-id="${habit.id}">
+                    ${actionLabel}
                 </button>
                 ${compact ? '' : `
                     <div class="item-actions">
@@ -945,6 +967,8 @@ class ProductivityDashboard {
         document.getElementById('habitTitle').value = habit?.title || '';
         document.getElementById('habitDescription').value = habit?.description || '';
         document.getElementById('habitColor').value = this.safeColor(habit?.color || '#4f46e5');
+        document.getElementById('habitProofType').value = habit?.proof_type || 'none';
+        document.getElementById('habitProofPrompt').value = habit?.proof_prompt || '';
         this.setFormMessage('habitTitleError', '');
         this.openModal('habitModal');
     }
@@ -962,6 +986,8 @@ class ProductivityDashboard {
             title,
             description: document.getElementById('habitDescription').value.trim(),
             color: document.getElementById('habitColor').value,
+            proof_type: document.getElementById('habitProofType').value,
+            proof_prompt: document.getElementById('habitProofPrompt').value.trim(),
         };
 
         const button = document.getElementById('habitSubmitButton');
@@ -990,6 +1016,130 @@ class ProductivityDashboard {
     async toggleHabit(id) {
         try {
             await this.request(`/api/habits/${id}/check`, { method: 'PATCH' });
+            await Promise.all([this.loadStats(), this.loadHabits(), this.loadDashboard()]);
+        } catch (error) {
+            this.toast(error.message, 'error');
+        }
+    }
+
+    openProofModal(id) {
+        const habit = this.habits.find((item) => String(item.id) === String(id));
+        if (!habit) return;
+        this.proofHabit = habit;
+        const initialType = habit.proof_type === 'photo_or_audio' ? 'photo' : habit.proof_type;
+        this.setText('proofHabitTitle', habit.title);
+        this.setText('proofRequirement', this.proofTypeLabel(habit.proof_type));
+        this.setText('proofPromptText', habit.proof_prompt || 'Добавьте подтверждение, чтобы отметить привычку выполненной.');
+        document.getElementById('proofNote').value = '';
+        document.getElementById('proofFile').value = '';
+        this.recordedAudioFile = null;
+        this.setProofType(initialType || 'note');
+        this.renderProofPreview();
+        this.openModal('proofModal');
+    }
+
+    setProofType(type) {
+        this.proofType = type;
+        const allowsChoice = this.proofHabit?.proof_type === 'photo_or_audio';
+        document.getElementById('proofTypeSection')?.classList.toggle('hidden', !allowsChoice);
+        document.querySelectorAll('[data-proof-choice]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.proofChoice === type);
+        });
+
+        const isNote = type === 'note';
+        const isAudio = type === 'audio';
+        document.getElementById('proofNoteSection')?.classList.toggle('hidden', !isNote);
+        document.getElementById('proofFileSection')?.classList.toggle('hidden', isNote);
+        const fileInput = document.getElementById('proofFile');
+        if (fileInput) {
+            fileInput.accept = isAudio ? 'audio/webm,audio/mpeg,audio/mp3,audio/wav' : 'image/jpeg,image/png,image/webp';
+        }
+        document.getElementById('audioRecorder')?.classList.toggle('hidden', !isAudio);
+        this.renderProofPreview();
+    }
+
+    renderProofPreview() {
+        const preview = document.getElementById('proofPreview');
+        if (!preview) return;
+        const file = this.recordedAudioFile || document.getElementById('proofFile')?.files?.[0];
+        if (!file) {
+            preview.innerHTML = '<p>Файл еще не выбран.</p>';
+            return;
+        }
+        const url = URL.createObjectURL(file);
+        if (file.type.startsWith('image/')) {
+            preview.innerHTML = `<img src="${url}" alt="Превью подтверждения">`;
+        } else {
+            preview.innerHTML = `<audio controls src="${url}"></audio><p>${this.escape(file.name)}</p>`;
+        }
+    }
+
+    async startAudioRecording() {
+        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+            this.toast('Запись с микрофона недоступна в этом браузере', 'error');
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.audioChunks = [];
+            this.mediaRecorder = new MediaRecorder(stream);
+            this.mediaRecorder.addEventListener('dataavailable', (event) => {
+                if (event.data.size > 0) this.audioChunks.push(event.data);
+            });
+            this.mediaRecorder.addEventListener('stop', () => {
+                stream.getTracks().forEach((track) => track.stop());
+                const blob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                this.recordedAudioFile = new File([blob], `habit-proof-${Date.now()}.webm`, { type: 'audio/webm' });
+                this.renderProofPreview();
+            });
+            this.mediaRecorder.start();
+            document.getElementById('startAudioRecord').disabled = true;
+            document.getElementById('stopAudioRecord').disabled = false;
+        } catch (error) {
+            this.toast('Не удалось получить доступ к микрофону', 'error');
+        }
+    }
+
+    stopAudioRecording() {
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+        }
+        document.getElementById('startAudioRecord').disabled = false;
+        document.getElementById('stopAudioRecord').disabled = true;
+    }
+
+    async saveHabitProof() {
+        if (!this.proofHabit) return;
+        const formData = new FormData();
+        const today = this.todayDateValue();
+        formData.set('completion_date', today);
+        formData.set('type', this.proofType);
+
+        if (this.proofType === 'note') {
+            const note = document.getElementById('proofNote').value.trim();
+            if (!note) {
+                this.toast('Добавьте заметку для подтверждения', 'error');
+                return;
+            }
+            formData.set('note', note);
+        } else {
+            const file = this.recordedAudioFile || document.getElementById('proofFile')?.files?.[0];
+            if (!file) {
+                this.toast(this.proofType === 'audio' ? 'Добавьте аудио' : 'Добавьте фото', 'error');
+                return;
+            }
+            formData.set('file', file);
+        }
+
+        const button = document.getElementById('proofSubmitButton');
+        this.setLoading(button, true);
+        try {
+            await this.request(`/api/habits/${this.proofHabit.id}/proofs`, {
+                method: 'POST',
+                body: formData,
+            });
+            this.closeModal();
+            this.toast('Привычка подтверждена', 'success');
             await Promise.all([this.loadStats(), this.loadHabits(), this.loadDashboard()]);
         } catch (error) {
             this.toast(error.message, 'error');
@@ -1505,6 +1655,7 @@ class ProductivityDashboard {
             'task-pomodoro': () => this.startPomodoro(id),
             'subtask-toggle': () => this.toggleSubtask(id, subtaskId),
             'habit-toggle': () => this.toggleHabit(id),
+            'habit-proof': () => this.openProofModal(id),
             'habit-edit': () => this.editHabit(id),
             'habit-delete': () => this.deleteHabit(id),
             'sleep-edit': () => this.editSleepLog(id),
@@ -1533,8 +1684,13 @@ class ProductivityDashboard {
         document.body.classList.remove('modal-open');
         document.querySelectorAll('.modal').forEach((modal) => modal.classList.remove('active'));
         document.querySelectorAll('.modal .btn.is-loading').forEach((button) => this.setLoading(button, false));
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+        }
         this.editingTask = null;
         this.editingHabit = null;
+        this.proofHabit = null;
+        this.recordedAudioFile = null;
         if (this.confirmResolver) {
             this.confirmResolver(result);
             this.confirmResolver = null;
@@ -1718,14 +1874,14 @@ class ProductivityDashboard {
         this.setSleepQuality('normal');
     }
 
-    setTaskDateBounds() {
+    setTaskDateBounds(editing = false) {
         const input = document.getElementById('taskDueDate');
         if (!input) return;
         const now = new Date();
         now.setSeconds(0, 0);
         const minValue = this.localDateTimeInputValue(now);
-        input.min = minValue;
-        if (!input.value) {
+        input.min = editing ? '' : minValue;
+        if (!editing && !input.value) {
             const defaultDue = new Date(now);
             defaultDue.setHours(defaultDue.getHours() + 1);
             input.value = this.localDateTimeInputValue(defaultDue);
@@ -1781,6 +1937,20 @@ class ProductivityDashboard {
 
     safeColor(value) {
         return /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#4f46e5';
+    }
+
+    habitRequiresProof(habit) {
+        return habit?.proof_type && habit.proof_type !== 'none';
+    }
+
+    proofTypeLabel(type) {
+        return {
+            note: 'Нужна заметка',
+            photo: 'Нужно фото',
+            audio: 'Нужно аудио',
+            photo_or_audio: 'Нужно фото или аудио',
+            none: 'Обычная галочка',
+        }[type || 'none'] || 'Обычная галочка';
     }
 
     formatDate(value) {
@@ -1845,18 +2015,13 @@ class ProductivityDashboard {
     }
 
     taskDateValue(value) {
-        const now = new Date();
-        now.setSeconds(0, 0);
-        const minValue = this.localDateTimeInputValue(now);
-        if (!value) {
-            const defaultDue = new Date(now);
-            defaultDue.setHours(defaultDue.getHours() + 1);
-            return this.localDateTimeInputValue(defaultDue);
+        if (!value) return '';
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(value.slice(16))) {
+            return value.slice(0, 16);
         }
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return minValue;
-        const candidate = this.localDateTimeInputValue(date);
-        return candidate < minValue ? minValue : candidate;
+        if (Number.isNaN(date.getTime())) return '';
+        return this.localDateTimeInputValue(date);
     }
 
     clockShort(value) {

@@ -278,9 +278,6 @@ func validateTaskUpdate(task *models.TaskUpdate) error {
 	if !validRecurrence(task.Recurrence) {
 		return fmt.Errorf("recurrence must be one of: none, daily, weekly, monthly")
 	}
-	if task.DueDate != nil && dueDateIsPast(*task.DueDate) {
-		return fmt.Errorf("due date cannot be in the past")
-	}
 	if err := validateSubtasks(task.Subtasks); err != nil {
 		return err
 	}

@@ -864,6 +864,29 @@ select:focus-visible {
     font-size: 0.82rem;
 }
 
+.proof-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--primary), transparent 62%);
+    background: color-mix(in srgb, var(--primary), transparent 88%);
+    color: var(--primary-strong);
+    font-weight: 800;
+}
+
+.proof-badge.verified {
+    border-color: color-mix(in srgb, var(--success), transparent 58%);
+    background: color-mix(in srgb, var(--success), transparent 88%);
+    color: var(--success);
+}
+
+.proof-action-btn {
+    white-space: nowrap;
+}
+
 .priority,
 .quality-pill {
     display: inline-flex;
@@ -2001,6 +2024,82 @@ select:focus-visible {
     background: transparent;
 }
 
+.proof-context {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--primary), transparent 88%), transparent 72%),
+        var(--surface-muted);
+}
+
+.proof-context strong {
+    display: block;
+    font-size: 1.05rem;
+}
+
+.proof-context p {
+    margin: 6px 0 0;
+    color: var(--muted);
+}
+
+.proof-choice {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.proof-option {
+    min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-button);
+    background: var(--surface-muted);
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform var(--ease), border-color var(--ease), background var(--ease), color var(--ease);
+}
+
+.proof-option:hover,
+.proof-option.active {
+    transform: translateY(-1px);
+    color: var(--primary-strong);
+    border-color: color-mix(in srgb, var(--primary), transparent 52%);
+    background: color-mix(in srgb, var(--primary), transparent 88%);
+}
+
+.proof-preview {
+    min-height: 94px;
+    padding: 12px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-button);
+    background: color-mix(in srgb, var(--surface-muted), transparent 24%);
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+}
+
+.proof-preview img {
+    width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.proof-preview audio {
+    width: 100%;
+}
+
+.audio-recorder {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
 .confirm-modal p {
     margin: 0 0 18px;
     color: var(--muted);
@@ -2669,6 +2768,8 @@ select:focus-visible {
 
     .form-grid-two,
     .priority-choice,
+    .proof-choice,
+    .audio-recorder,
     .theme-choice {
         grid-template-columns: 1fr;
     }

@@ -14,6 +14,7 @@ import (
 	"habitracker/app/middleware"
 	"habitracker/app/repository"
 	"habitracker/app/service"
+	"habitracker/app/storage"
 	"habitracker/app/utils"
 )
 
@@ -30,13 +31,14 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 	sleepService := service.NewSleepService(sleepRepo)
 	statsService := service.NewStatsService(taskService, habitService)
 	adminService := service.NewAdminService(adminRepo)
+	storageService := storage.NewFromEnv()
 
 	passwordManager := utils.NewPasswordManager()
 	jwtManager := utils.NewJWTManager(cfg.JWT.Secret)
 
 	authHandler := handlers.NewAuthHandler(userService, passwordManager, jwtManager)
 	taskHandler := handlers.NewTaskHandler(taskService)
-	habitHandler := handlers.NewHabitHandler(habitService)
+	habitHandler := handlers.NewHabitHandler(habitService, storageService)
 	sleepHandler := handlers.NewSleepHandler(sleepService)
 	statsHandler := handlers.NewStatsHandler(statsService)
 	adminHandler := handlers.NewAdminHandler(adminService)
@@ -102,6 +104,8 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 		api.PUT("/habits/:id", habitHandler.Update)
 		api.DELETE("/habits/:id", habitHandler.Delete)
 		api.PATCH("/habits/:id/check", habitHandler.Check)
+		api.POST("/habits/:id/proofs", habitHandler.CreateProof)
+		api.GET("/habits/:id/proofs/:proofID/file", habitHandler.ProofFile)
 
 		api.GET("/sleep/settings", sleepHandler.GetSettings)
 		api.PUT("/sleep/settings", sleepHandler.UpdateSettings)

@@ -170,12 +170,15 @@ type Habit struct {
 	Title        string    `json:"title"`
 	Description  string    `json:"description,omitempty"`
 	Color        string    `json:"color"`
+	ProofType    string    `json:"proof_type"`
+	ProofPrompt  string    `json:"proof_prompt,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Streak       int       `json:"streak"`
 	WeeklyRate   float64   `json:"weekly_rate"`
 	MonthlyRate  float64   `json:"monthly_rate"`
 	CheckedToday bool      `json:"checked_today"`
+	ProofToday   bool      `json:"proof_today"`
 }
 
 type HabitCreate struct {
@@ -183,12 +186,16 @@ type HabitCreate struct {
 	Title       string `json:"title" validate:"required,min=1,max=100"`
 	Description string `json:"description"`
 	Color       string `json:"color" validate:"required,hexcolor"`
+	ProofType   string `json:"proof_type"`
+	ProofPrompt string `json:"proof_prompt"`
 }
 
 type HabitUpdate struct {
 	Title       string `json:"title" validate:"omitempty,min=1,max=100"`
 	Description string `json:"description"`
 	Color       string `json:"color" validate:"omitempty,hexcolor"`
+	ProofType   string `json:"proof_type"`
+	ProofPrompt string `json:"proof_prompt"`
 }
 
 type HabitCheck struct {
@@ -197,6 +204,33 @@ type HabitCheck struct {
 	UserID    int64     `json:"user_id"`
 	CheckDate time.Time `json:"check_date"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type HabitProof struct {
+	ID             int64     `json:"id"`
+	HabitID        int64     `json:"habit_id"`
+	UserID         int64     `json:"user_id"`
+	CompletionDate time.Time `json:"completion_date"`
+	Type           string    `json:"type"`
+	TextNote       string    `json:"text_note,omitempty"`
+	FileURL        string    `json:"file_url,omitempty"`
+	FileName       string    `json:"file_name,omitempty"`
+	MimeType       string    `json:"mime_type,omitempty"`
+	FileSize       int64     `json:"file_size,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type HabitProofCreate struct {
+	HabitID        int64
+	UserID         int64
+	CompletionDate time.Time
+	Type           string
+	TextNote       string
+	FileURL        string
+	FileName       string
+	MimeType       string
+	FileSize       int64
 }
 
 type Stats struct {

@@ -17,7 +17,11 @@ func NewHabitRepository(db *sql.DB) *HabitRepository {
 
 func (r *HabitRepository) GetAll(userID int64) ([]models.Habit, error) {
 	query := `
-		SELECT h.id, h.user_id, h.title, h.description, h.color, h.created_at, h.updated_at,
+		SELECT h.id, h.user_id, h.title, h.description, h.color, h.proof_type, COALESCE(h.proof_prompt, ''), h.created_at, h.updated_at,
+			EXISTS (
+				SELECT 1 FROM habit_proofs hp
+				WHERE hp.habit_id = h.id AND hp.user_id = h.user_id AND hp.completion_date = CURRENT_DATE
+			) as proof_today,
 			0 as weekly_checks,
 			0 as monthly_checks
 		FROM habits h
@@ -38,7 +42,7 @@ func (r *HabitRepository) GetAll(userID int64) ([]models.Habit, error) {
 	for rows.Next() {
 		var h models.Habit
 		var weeklyChecks, monthlyChecks int
-		err := rows.Scan(&h.ID, &h.UserID, &h.Title, &h.Description, &h.Color, &h.CreatedAt, &h.UpdatedAt, &weeklyChecks, &monthlyChecks)
+		err := rows.Scan(&h.ID, &h.UserID, &h.Title, &h.Description, &h.Color, &h.ProofType, &h.ProofPrompt, &h.CreatedAt, &h.UpdatedAt, &h.ProofToday, &weeklyChecks, &monthlyChecks)
 		if err != nil {
 			return nil, err
 		}
@@ -69,9 +73,10 @@ func (r *HabitRepository) GetAll(userID int64) ([]models.Habit, error) {
 func (r *HabitRepository) GetByID(userID, id int64) (*models.Habit, error) {
 	var h models.Habit
 	err := r.db.QueryRow(
-		`SELECT id, user_id, title, description, color, created_at, updated_at FROM habits WHERE id = $1 AND user_id = $2`,
+		`SELECT id, user_id, title, description, color, proof_type, COALESCE(proof_prompt, ''), created_at, updated_at
+		 FROM habits WHERE id = $1 AND user_id = $2`,
 		id, userID,
-	).Scan(&h.ID, &h.UserID, &h.Title, &h.Description, &h.Color, &h.CreatedAt, &h.UpdatedAt)
+	).Scan(&h.ID, &h.UserID, &h.Title, &h.Description, &h.Color, &h.ProofType, &h.ProofPrompt, &h.CreatedAt, &h.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +87,9 @@ func (r *HabitRepository) GetByID(userID, id int64) (*models.Habit, error) {
 	var checkCount int
 	r.db.QueryRow("SELECT COUNT(*) FROM habit_checks WHERE habit_id = $1 AND user_id = $2 AND check_date = $3", id, userID, today).Scan(&checkCount)
 	h.CheckedToday = checkCount > 0
+	var proofCount int
+	r.db.QueryRow("SELECT COUNT(*) FROM habit_proofs WHERE habit_id = $1 AND user_id = $2 AND completion_date = $3", id, userID, today).Scan(&proofCount)
+	h.ProofToday = proofCount > 0
 
 	return &h, nil
 }
@@ -89,10 +97,10 @@ func (r *HabitRepository) GetByID(userID, id int64) (*models.Habit, error) {
 func (r *HabitRepository) Create(habit models.HabitCreate) (*models.Habit, error) {
 	var id int64
 	err := r.db.QueryRow(
-		`INSERT INTO habits (user_id, title, description, color, created_at, updated_at) 
-		 VALUES ($1, $2, $3, $4, NOW(), NOW())
+		`INSERT INTO habits (user_id, title, description, color, proof_type, proof_prompt, created_at, updated_at) 
+		 VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), NOW(), NOW())
 		 RETURNING id`,
-		habit.UserID, habit.Title, habit.Description, habit.Color,
+		habit.UserID, habit.Title, habit.Description, habit.Color, normalizedProofType(habit.ProofType), habit.ProofPrompt,
 	).Scan(&id)
 	if err != nil {
 		return nil, err
@@ -117,6 +125,12 @@ func (r *HabitRepository) Update(userID, id int64, habit models.HabitUpdate) (*m
 		args = append(args, habit.Color)
 		query += ", color = " + placeholder(len(args))
 	}
+	if habit.ProofType != "" {
+		args = append(args, normalizedProofType(habit.ProofType))
+		query += ", proof_type = " + placeholder(len(args))
+	}
+	args = append(args, habit.ProofPrompt)
+	query += ", proof_prompt = NULLIF(" + placeholder(len(args)) + ", '')"
 
 	args = append(args, id, userID)
 	query += " WHERE id = " + placeholder(len(args)-1) + " AND user_id = " + placeholder(len(args))
@@ -143,6 +157,71 @@ func (r *HabitRepository) Check(userID, habitID int64) error {
 		habitID, userID, today,
 	)
 	return err
+}
+
+func (r *HabitRepository) CreateProof(proof models.HabitProofCreate) (*models.HabitProof, error) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var saved models.HabitProof
+	err = tx.QueryRow(
+		`INSERT INTO habit_proofs (
+			habit_id, user_id, completion_date, type, text_note, file_url, file_name, mime_type, file_size, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), NULLIF($9::bigint, 0), NOW(), NOW())
+		ON CONFLICT (habit_id, completion_date) DO UPDATE SET
+			type = EXCLUDED.type,
+			text_note = EXCLUDED.text_note,
+			file_url = EXCLUDED.file_url,
+			file_name = EXCLUDED.file_name,
+			mime_type = EXCLUDED.mime_type,
+			file_size = EXCLUDED.file_size,
+			updated_at = NOW()
+		RETURNING id, habit_id, user_id, completion_date, type, COALESCE(text_note, ''), COALESCE(file_url, ''),
+			COALESCE(file_name, ''), COALESCE(mime_type, ''), COALESCE(file_size, 0), created_at, updated_at`,
+		proof.HabitID, proof.UserID, proof.CompletionDate, proof.Type, proof.TextNote, proof.FileURL, proof.FileName, proof.MimeType, proof.FileSize,
+	).Scan(
+		&saved.ID, &saved.HabitID, &saved.UserID, &saved.CompletionDate, &saved.Type, &saved.TextNote,
+		&saved.FileURL, &saved.FileName, &saved.MimeType, &saved.FileSize, &saved.CreatedAt, &saved.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(
+		`INSERT INTO habit_checks (habit_id, user_id, check_date, created_at)
+		 VALUES ($1, $2, $3, NOW())
+		 ON CONFLICT (habit_id, check_date) DO NOTHING`,
+		proof.HabitID, proof.UserID, proof.CompletionDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &saved, nil
+}
+
+func (r *HabitRepository) GetProof(userID, habitID, proofID int64) (*models.HabitProof, error) {
+	var proof models.HabitProof
+	err := r.db.QueryRow(
+		`SELECT id, habit_id, user_id, completion_date, type, COALESCE(text_note, ''), COALESCE(file_url, ''),
+			COALESCE(file_name, ''), COALESCE(mime_type, ''), COALESCE(file_size, 0), created_at, updated_at
+		 FROM habit_proofs
+		 WHERE id = $1 AND habit_id = $2 AND user_id = $3`,
+		proofID, habitID, userID,
+	).Scan(
+		&proof.ID, &proof.HabitID, &proof.UserID, &proof.CompletionDate, &proof.Type, &proof.TextNote,
+		&proof.FileURL, &proof.FileName, &proof.MimeType, &proof.FileSize, &proof.CreatedAt, &proof.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &proof, nil
 }
 
 func (r *HabitRepository) Uncheck(userID, habitID int64) error {
@@ -256,4 +335,13 @@ func (r *HabitRepository) countChecksSince(userID, habitID int64, days int) int 
 		return 0
 	}
 	return count
+}
+
+func normalizedProofType(value string) string {
+	switch value {
+	case "note", "photo", "audio", "photo_or_audio":
+		return value
+	default:
+		return "none"
+	}
 }

@@ -289,6 +289,9 @@ PORT=8080
 DATABASE_URL=postgres://USER:PASSWORD@HOST:6543/postgres?sslmode=require
 JWT_SECRET=change_this_secret_key_please_use_a_strong_random_string
 CORS_ORIGIN=https://your-vercel-domain.vercel.app
+SUPABASE_URL=https://PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+SUPABASE_STORAGE_BUCKET=habit-proofs
 ```
 
 ### Local Fallback
@@ -306,7 +309,14 @@ DB_PORT=5432
 DB_DATABASE=pulsedesk
 DB_USERNAME=postgres
 DB_PASSWORD=
+UPLOAD_ROOT=uploads
 ```
+
+### Proof File Storage
+
+Proof-based habits store only metadata in PostgreSQL. Photo/audio binaries are saved in Supabase Storage when `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured. The backend creates/uses a private `habit-proofs` bucket and serves files through authenticated backend proxy routes, so the service role key never reaches the frontend.
+
+For local development without Supabase Storage, files are written to `UPLOAD_ROOT` (`uploads/` by default). This folder is ignored by Git and should not be used as persistent production storage.
 
 ### Environment Rules
 

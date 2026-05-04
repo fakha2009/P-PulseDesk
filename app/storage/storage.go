@@ -101,6 +101,41 @@ func (s *Service) Open(ctx context.Context, objectPath string) (io.ReadCloser, e
 	return os.Open(filepath.Join(s.localRoot, filepath.FromSlash(cleanPath)))
 }
 
+func (s *Service) Delete(ctx context.Context, objectPath string) error {
+	cleanPath := strings.TrimLeft(filepath.ToSlash(filepath.Clean(objectPath)), "/")
+	if cleanPath == "." || strings.HasPrefix(cleanPath, "../") || !strings.HasPrefix(cleanPath, "habit-proofs/") {
+		return fmt.Errorf("invalid file path")
+	}
+
+	if s.supabaseURL != "" && s.serviceKey != "" {
+		payload, err := json.Marshal(map[string][]string{"prefixes": []string{cleanPath}})
+		if err != nil {
+			return err
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/storage/v1/object/%s/remove", s.supabaseURL, s.bucket), bytes.NewReader(payload))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Authorization", "Bearer "+s.serviceKey)
+		req.Header.Set("apikey", s.serviceKey)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return fmt.Errorf("storage delete failed with status %d", resp.StatusCode)
+		}
+		return nil
+	}
+
+	if err := os.Remove(filepath.Join(s.localRoot, filepath.FromSlash(cleanPath))); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 func (s *Service) saveSupabase(ctx context.Context, objectPath, mimeType string, file multipart.File) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/storage/v1/object/%s/%s", s.supabaseURL, s.bucket, objectPath), file)
 	if err != nil {

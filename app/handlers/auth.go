@@ -99,6 +99,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		})
 		return
 	}
+	_ = h.userService.RecordSession(user.ID, c.GetHeader("User-Agent"), c.ClientIP())
 
 	c.JSON(http.StatusCreated, models.APIResponse{
 		Success: true,
@@ -154,6 +155,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		})
 		return
 	}
+	_ = h.userService.RecordSession(user.ID, c.GetHeader("User-Agent"), c.ClientIP())
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
@@ -182,17 +184,19 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		})
 		return
 	}
+	h.userService.TouchSession(userID, c.GetHeader("User-Agent"), c.ClientIP())
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
 		Data: gin.H{
-			"id":         user.ID,
-			"name":       user.Name,
-			"email":      user.Email,
-			"role":       user.Role,
-			"theme":      user.Theme,
-			"disabled":   user.Disabled,
-			"created_at": user.CreatedAt,
+			"id":                   user.ID,
+			"name":                 user.Name,
+			"email":                user.Email,
+			"role":                 user.Role,
+			"theme":                user.Theme,
+			"disabled":             user.Disabled,
+			"onboarding_completed": user.OnboardingCompleted,
+			"created_at":           user.CreatedAt,
 		},
 	})
 }
@@ -285,15 +289,47 @@ func (h *AuthHandler) UpdateTheme(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
 		Data: gin.H{
-			"id":         user.ID,
-			"name":       user.Name,
-			"email":      user.Email,
-			"role":       user.Role,
-			"theme":      user.Theme,
-			"disabled":   user.Disabled,
-			"created_at": user.CreatedAt,
+			"id":                   user.ID,
+			"name":                 user.Name,
+			"email":                user.Email,
+			"role":                 user.Role,
+			"theme":                user.Theme,
+			"disabled":             user.Disabled,
+			"onboarding_completed": user.OnboardingCompleted,
+			"created_at":           user.CreatedAt,
 		},
 	})
+}
+
+func (h *AuthHandler) UpdateOnboarding(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.APIResponse{Success: false, Error: "User not found in context"})
+		return
+	}
+
+	var req models.UserOnboardingUpdate
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{Success: false, Error: "Invalid request format"})
+		return
+	}
+
+	user, err := h.userService.UpdateOnboarding(userID, req.Completed)
+	if err != nil {
+		c.JSON(http.StatusNotFound, models.APIResponse{Success: false, Error: "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{Success: true, Data: gin.H{
+		"id":                   user.ID,
+		"name":                 user.Name,
+		"email":                user.Email,
+		"role":                 user.Role,
+		"theme":                user.Theme,
+		"disabled":             user.Disabled,
+		"onboarding_completed": user.OnboardingCompleted,
+		"created_at":           user.CreatedAt,
+	}})
 }
 
 func (h *AuthHandler) Preferences(c *gin.Context) {

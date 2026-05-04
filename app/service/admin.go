@@ -30,6 +30,13 @@ func (s *AdminService) Users() ([]models.AdminUserSummary, error) {
 	return s.repo.Users()
 }
 
+func (s *AdminService) UserSessions(userID int64) ([]models.UserSession, error) {
+	if _, err := s.repo.UserRole(userID); err != nil {
+		return nil, ErrAdminUserNotFound
+	}
+	return s.repo.UserSessions(userID)
+}
+
 func (s *AdminService) UpdateUserRole(currentUserID, targetUserID int64, role string, confirm bool) error {
 	if role != "user" && role != "admin" {
 		return ErrInvalidRole

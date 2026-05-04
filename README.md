@@ -44,9 +44,12 @@ The application includes:
 | 🔁 Recurring Tasks | Daily, weekly, and monthly repeating tasks |
 | ⏱️ Focus Tools | Pomodoro timer per task and deadline reminders |
 | 🔁 Habits | Track daily habits, streaks, weekly rate, monthly rate, and dashboard previews |
+| 📎 Proof Habits | Require note, photo, audio, or photo/audio proof before a habit is marked done |
+| 🖼️ Proof Library | Browse, preview, play, filter, and delete personal proof media |
 | 😴 Sleep Studio | Sleep hero dashboard, Sleep Score, goal tracking, quality chips, recommendations, and sleep journal |
 | 🔐 Authentication | Register, login, JWT sessions, password hashing, profile update, password change |
-| 🛡️ Admin Panel | Protected admin API, system stats, user table, role management |
+| 🧭 Onboarding | New users get a guided product tour with tasks, habits, proof, and sleep basics |
+| 🛡️ Admin Panel | Protected stats, user table, role management, account status, and user sessions |
 | 🗄️ Database | Supabase PostgreSQL using `database/sql` with the `pgx` driver |
 | ☁️ Deployment | Static frontend plus Go serverless API on Vercel |
 
@@ -65,6 +68,9 @@ The application includes:
 | 🧩 Task checklists | PostgreSQL-backed subtasks with completion state |
 | 🧲 Drag-and-drop ordering | Persisted task ordering through backend reorder API |
 | ⏱️ Focus workflow | Pomodoro timer and browser/PWA reminders |
+| 🧭 Guided onboarding | Backend-backed onboarding state with replay from profile settings |
+| 🖼️ Proof library | Private media gallery for habit proof files with ownership checks |
+| 💻 Session tracking | Login device, browser, OS, IP, and last-active data for admins |
 | 🔁 Idempotent seed | Migrations and seed can run repeatedly without duplicate demo users |
 | ☁️ Vercel-ready | Static frontend with serverless Go API via `api/index.go` |
 | 🧱 Clean architecture | Handlers, services, repositories, middleware, models, utils |
@@ -89,6 +95,7 @@ PulseDesk includes a complete authentication flow:
 | JWT protected routes | ✅ |
 | Admin-only routes | ✅ |
 | bcrypt password hashing | ✅ |
+| Backend-backed onboarding state | ✅ |
 
 `GET /api/auth/me` returns only safe user fields:
 
@@ -98,6 +105,7 @@ PulseDesk includes a complete authentication flow:
   "name": "User",
   "email": "user@example.com",
   "role": "user",
+  "onboarding_completed": true,
   "created_at": "2026-05-01T00:00:00Z"
 }
 ```
@@ -167,11 +175,41 @@ Habit tracking is more than basic CRUD.
 | Edit habits | Update habit names and settings |
 | Delete habits | Remove habits |
 | Daily check-in | Mark or unmark habit completion |
+| Proof requirements | Require a note, photo, audio, or photo/audio proof before completion |
+| Private proof files | Photo/audio proof files are stored outside PostgreSQL and served through authenticated backend routes |
 | Color coding | Visual habit separation |
 | Current streak | Track ongoing consistency |
 | Weekly rate | Analyze weekly performance |
 | Monthly rate | Analyze monthly consistency |
 | Dashboard preview | Show habit progress on the main page |
+
+---
+
+### 🧭 Onboarding
+
+New accounts see a short guided tour the first time they enter the app. It explains where to start, how tasks work, how proof-based habits work, and how sleep tracking fits into the workflow.
+
+| Feature | Description |
+|---|---|
+| First-login tour | Shows automatically while `onboarding_completed = false` |
+| Multi-step flow | Welcome, Tasks, Habits, Sleep, and Finish |
+| Backend persistence | `users.onboarding_completed` prevents repeat popups across devices |
+| Replay | Profile includes “Показать обучение” to open the tour again |
+| Fallback | `localStorage` is used only as a local fallback if API persistence is unavailable |
+
+---
+
+### 🖼️ Proof Library
+
+The Library page collects all photo and audio proofs from habits without adding another mobile bottom-nav item. It is available from the sidebar: below `Профиль` for regular users and below `Admin` for admins.
+
+| Feature | Description |
+|---|---|
+| Media gallery | Photo grid and audio cards from `habit_proofs` |
+| Filters | All, photo, audio, plus optional date range |
+| Preview | Fullscreen image preview and native HTML5 audio playback |
+| Private access | Users can only list, open, and delete their own proof files |
+| Storage cleanup | Deleting from Library removes database metadata and the storage object |
 
 ---
 
@@ -378,6 +416,15 @@ Seed data is idempotent and stores passwords as bcrypt hashes.
 | `PUT` | `/api/auth/password` | Change password |
 | `POST` | `/api/auth/logout` | Logout |
 
+### User Settings
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `PATCH` | `/api/user/theme` | Update synced theme |
+| `GET` | `/api/user/preferences` | Read appearance preferences |
+| `PATCH` | `/api/user/preferences` | Update appearance preferences |
+| `PATCH` | `/api/user/onboarding` | Save onboarding completion state |
+
 ### Tasks
 
 | Method | Endpoint | Description |
@@ -413,6 +460,25 @@ Task filters support:
 | `PUT` | `/api/habits/:id` | Update habit |
 | `DELETE` | `/api/habits/:id` | Delete habit |
 | `PATCH` | `/api/habits/:id/check` | Toggle daily check |
+| `POST` | `/api/habits/:id/proofs` | Upload note/photo/audio proof and mark complete |
+| `GET` | `/api/habits/:id/proofs/:proofID/file` | Read private proof file through backend proxy |
+
+### Proof Library
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/proofs` | List current user's photo/audio proofs |
+| `DELETE` | `/api/proofs/:id` | Delete current user's proof metadata and file |
+
+Supported query params:
+
+```text
+page
+limit
+type=photo|audio
+date_from=YYYY-MM-DD
+date_to=YYYY-MM-DD
+```
 
 ### Sleep
 
@@ -432,6 +498,7 @@ Task filters support:
 |---|---|---|
 | `GET` | `/api/admin/stats` | Project statistics |
 | `GET` | `/api/admin/users` | User table |
+| `GET` | `/api/admin/users/:id/sessions` | User devices and login sessions |
 | `PATCH` | `/api/admin/users/:id/role` | Update user role |
 
 For all protected endpoints:

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"time"
 
 	"habitracker/app/models"
 )
@@ -17,7 +18,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 func (r *UserRepository) Create(name, email, passwordHash string) (*models.User, error) {
 	var id int64
 	err := r.db.QueryRow(
-		"INSERT INTO users (name, email, password_hash, role, theme, disabled, created_at, updated_at) VALUES ($1, $2, $3, 'user', 'dark', FALSE, NOW(), NOW()) RETURNING id",
+		"INSERT INTO users (name, email, password_hash, role, theme, disabled, onboarding_completed, created_at, updated_at) VALUES ($1, $2, $3, 'user', 'dark', FALSE, FALSE, NOW(), NOW()) RETURNING id",
 		name, email, passwordHash,
 	).Scan(&id)
 	if err != nil {
@@ -30,9 +31,9 @@ func (r *UserRepository) Create(name, email, passwordHash string) (*models.User,
 func (r *UserRepository) GetByID(id int64) (*models.User, error) {
 	var user models.User
 	err := r.db.QueryRow(
-		"SELECT id, name, email, role, theme, disabled, created_at, updated_at FROM users WHERE id = $1",
+		"SELECT id, name, email, role, theme, disabled, onboarding_completed, created_at, updated_at FROM users WHERE id = $1",
 		id,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.Disabled, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.Disabled, &user.OnboardingCompleted, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -43,9 +44,9 @@ func (r *UserRepository) GetByID(id int64) (*models.User, error) {
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	var user models.User
 	err := r.db.QueryRow(
-		"SELECT id, name, email, role, theme, disabled, password_hash, created_at, updated_at FROM users WHERE email = $1",
+		"SELECT id, name, email, role, theme, disabled, onboarding_completed, password_hash, created_at, updated_at FROM users WHERE email = $1",
 		email,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.Disabled, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.Disabled, &user.OnboardingCompleted, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +57,9 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 func (r *UserRepository) GetWithPasswordByID(id int64) (*models.User, error) {
 	var user models.User
 	err := r.db.QueryRow(
-		"SELECT id, name, email, role, theme, disabled, password_hash, created_at, updated_at FROM users WHERE id = $1",
+		"SELECT id, name, email, role, theme, disabled, onboarding_completed, password_hash, created_at, updated_at FROM users WHERE id = $1",
 		id,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.Disabled, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Theme, &user.Disabled, &user.OnboardingCompleted, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +112,41 @@ func (r *UserRepository) UpdateTheme(id int64, theme string) (*models.User, erro
 	}
 
 	return r.GetByID(id)
+}
+
+func (r *UserRepository) UpdateOnboarding(id int64, completed bool) (*models.User, error) {
+	_, err := r.db.Exec(
+		"UPDATE users SET onboarding_completed = $1, updated_at = NOW() WHERE id = $2",
+		completed, id,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.GetByID(id)
+}
+
+func (r *UserRepository) RecordSession(session models.UserSession) error {
+	_, err := r.db.Exec(`
+		INSERT INTO user_sessions (user_id, device_type, browser, os, ip, user_agent, last_active_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+	`, session.UserID, session.DeviceType, session.Browser, session.OS, session.IP, session.UserAgent)
+	return err
+}
+
+func (r *UserRepository) TouchSession(userID int64, userAgent, ip string) error {
+	cutoff := time.Now().Add(-30 * time.Minute)
+	_, err := r.db.Exec(`
+		UPDATE user_sessions
+		SET last_active_at = NOW()
+		WHERE id = (
+			SELECT id FROM user_sessions
+			WHERE user_id = $1 AND user_agent = $2 AND COALESCE(ip, '') = COALESCE($3, '')
+			ORDER BY last_active_at DESC
+			LIMIT 1
+		) AND last_active_at >= $4
+	`, userID, userAgent, ip, cutoff)
+	return err
 }
 
 func (r *UserRepository) GetPreferences(userID int64) (*models.UserPreferences, error) {

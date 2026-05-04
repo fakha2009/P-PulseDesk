@@ -46,11 +46,13 @@ func (db *DB) Migrate() error {
 			role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
 			theme TEXT NOT NULL DEFAULT 'dark' CHECK (theme IN ('light','dark')),
 			disabled BOOLEAN NOT NULL DEFAULT FALSE,
+			onboarding_completed BOOLEAN NOT NULL DEFAULT TRUE,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'dark'`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT TRUE`,
 		`DO $$
 		BEGIN
 			IF NOT EXISTS (
@@ -67,6 +69,17 @@ func (db *DB) Migrate() error {
 			motion TEXT NOT NULL DEFAULT 'normal' CHECK (motion IN ('normal','reduced')),
 			background_glow BOOLEAN NOT NULL DEFAULT TRUE,
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS user_sessions (
+			id BIGSERIAL PRIMARY KEY,
+			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			device_type TEXT NOT NULL DEFAULT 'desktop' CHECK (device_type IN ('mobile','desktop')),
+			browser TEXT NOT NULL DEFAULT 'Unknown',
+			os TEXT NOT NULL DEFAULT 'Unknown',
+			ip TEXT,
+			user_agent TEXT,
+			last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
 		`CREATE TABLE IF NOT EXISTS tasks (
 			id BIGSERIAL PRIMARY KEY,
@@ -170,6 +183,8 @@ func (db *DB) Migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`,
 		`CREATE INDEX IF NOT EXISTS idx_tasks_sort_order ON tasks(user_id, sort_order)`,
 		`CREATE INDEX IF NOT EXISTS idx_task_subtasks_task_id ON task_subtasks(task_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_user_sessions_last_active_at ON user_sessions(last_active_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_habits_user_id ON habits(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_habit_checks_habit_id ON habit_checks(habit_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_habit_checks_user_id ON habit_checks(user_id)`,

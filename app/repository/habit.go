@@ -224,10 +224,25 @@ func (r *HabitRepository) GetProof(userID, habitID, proofID int64) (*models.Habi
 	return &proof, nil
 }
 
+func (r *HabitRepository) DeleteProof(userID, habitID int64, checkDate string) error {
+	_, err := r.db.Exec("DELETE FROM habit_proofs WHERE habit_id = $1 AND user_id = $2 AND completion_date = $3", habitID, userID, checkDate)
+	return err
+}
+
 func (r *HabitRepository) Uncheck(userID, habitID int64) error {
 	today := time.Now().Format("2006-01-02")
-	_, err := r.db.Exec("DELETE FROM habit_checks WHERE habit_id = $1 AND user_id = $2 AND check_date = $3", habitID, userID, today)
-	return err
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec("DELETE FROM habit_checks WHERE habit_id = $1 AND user_id = $2 AND check_date = $3", habitID, userID, today); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM habit_proofs WHERE habit_id = $1 AND user_id = $2 AND completion_date = $3", habitID, userID, today); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *HabitRepository) GetChecks(userID, habitID int64, days int) ([]models.HabitCheck, error) {

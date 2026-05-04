@@ -11,15 +11,16 @@ const (
 )
 
 type User struct {
-	ID           int64     `json:"id"`
-	Name         string    `json:"name"`
-	Email        string    `json:"email"`
-	Role         string    `json:"role"`
-	Theme        string    `json:"theme"`
-	Disabled     bool      `json:"disabled"`
-	PasswordHash string    `json:"-"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                  int64     `json:"id"`
+	Name                string    `json:"name"`
+	Email               string    `json:"email"`
+	Role                string    `json:"role"`
+	Theme               string    `json:"theme"`
+	Disabled            bool      `json:"disabled"`
+	OnboardingCompleted bool      `json:"onboarding_completed"`
+	PasswordHash        string    `json:"-"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 type AdminStats struct {
@@ -42,15 +43,49 @@ type AdminActivityDay struct {
 }
 
 type AdminUserSummary struct {
-	ID            int64     `json:"id"`
-	Name          string    `json:"name"`
-	Email         string    `json:"email"`
-	Role          string    `json:"role"`
-	Disabled      bool      `json:"disabled"`
-	CreatedAt     time.Time `json:"created_at"`
-	TaskCount     int       `json:"task_count"`
-	HabitCount    int       `json:"habit_count"`
-	SleepLogCount int       `json:"sleep_log_count"`
+	ID            int64      `json:"id"`
+	Name          string     `json:"name"`
+	Email         string     `json:"email"`
+	Role          string     `json:"role"`
+	Disabled      bool       `json:"disabled"`
+	CreatedAt     time.Time  `json:"created_at"`
+	LastActiveAt  *time.Time `json:"last_active_at,omitempty"`
+	SessionCount  int        `json:"session_count"`
+	TaskCount     int        `json:"task_count"`
+	HabitCount    int        `json:"habit_count"`
+	SleepLogCount int        `json:"sleep_log_count"`
+}
+
+type UserSession struct {
+	ID           int64     `json:"id"`
+	UserID       int64     `json:"user_id"`
+	DeviceType   string    `json:"device_type"`
+	Browser      string    `json:"browser"`
+	OS           string    `json:"os"`
+	IP           string    `json:"ip"`
+	UserAgent    string    `json:"user_agent"`
+	LastActiveAt time.Time `json:"last_active_at"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type ProofLibraryItem struct {
+	ID             int64     `json:"id"`
+	HabitID        int64     `json:"habit_id"`
+	HabitTitle     string    `json:"habit_title"`
+	Type           string    `json:"type"`
+	FileURL        string    `json:"file_url,omitempty"`
+	FileName       string    `json:"file_name,omitempty"`
+	MimeType       string    `json:"mime_type,omitempty"`
+	FileSize       int64     `json:"file_size,omitempty"`
+	CompletionDate time.Time `json:"completion_date"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type ProofLibraryResponse struct {
+	Items []ProofLibraryItem `json:"items"`
+	Page  int                `json:"page"`
+	Limit int                `json:"limit"`
+	Total int                `json:"total"`
 }
 
 type AdminRoleUpdate struct {
@@ -87,6 +122,10 @@ type UserPasswordUpdate struct {
 
 type UserThemeUpdate struct {
 	Theme string `json:"theme" validate:"required,oneof=light dark"`
+}
+
+type UserOnboardingUpdate struct {
+	Completed bool `json:"completed"`
 }
 
 type UserPreferences struct {

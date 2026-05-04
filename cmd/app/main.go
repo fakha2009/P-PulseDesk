@@ -62,7 +62,7 @@ func main() {
 	router.GET("/app", func(c *gin.Context) {
 		c.File("./web/app.html")
 	})
-	for _, path := range []string{"/dashboard", "/tasks", "/calendar", "/habits", "/sleep", "/profile", "/admin"} {
+	for _, path := range []string{"/dashboard", "/tasks", "/calendar", "/habits", "/sleep", "/profile", "/library", "/proofs", "/admin"} {
 		routePath := path
 		router.GET(routePath, func(c *gin.Context) {
 			c.File("./web/app.html")

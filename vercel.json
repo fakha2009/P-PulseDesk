@@ -41,6 +41,14 @@
       "destination": "/app.html"
     },
     {
+      "source": "/library",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/proofs",
+      "destination": "/app.html"
+    },
+    {
       "source": "/admin",
       "destination": "/app.html"
     },

@@ -7,6 +7,7 @@ class ProductivityDashboard {
             habits: '/habits',
             sleep: '/sleep',
             profile: '/profile',
+            library: '/library',
             admin: '/admin',
         };
         this.currentPage = this.pageFromPath(window.location.pathname);
@@ -20,6 +21,10 @@ class ProductivityDashboard {
         this.recordedAudioFile = null;
         this.mediaRecorder = null;
         this.audioChunks = [];
+        this.onboardingStep = 0;
+        this.proofFilter = 'all';
+        this.proofLibrary = { items: [], total: 0, page: 1, limit: 24 };
+        this.proofMediaURLs = new Map();
         this.editingSleepLog = null;
         this.searchTimer = null;
         this.clockTimer = null;
@@ -57,6 +62,7 @@ class ProductivityDashboard {
             document.body.classList.remove('app-booting');
             document.body.classList.add('app-ready');
             await this.loadAll();
+            this.maybeOpenOnboarding();
         } catch (error) {
             this.redirectToAuth();
         }
@@ -97,6 +103,18 @@ class ProductivityDashboard {
 
         document.getElementById('sidebarLogout')?.addEventListener('click', () => this.logout());
         document.getElementById('profileLogout')?.addEventListener('click', () => this.logout());
+        document.getElementById('replayOnboardingButton')?.addEventListener('click', () => this.openOnboarding(true));
+
+        document.getElementById('onboardingNext')?.addEventListener('click', () => this.nextOnboardingStep());
+        document.getElementById('onboardingBack')?.addEventListener('click', () => this.previousOnboardingStep());
+        document.getElementById('onboardingSkip')?.addEventListener('click', () => this.completeOnboarding());
+        document.getElementById('onboardingDots')?.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-onboarding-step]');
+            if (button) {
+                this.onboardingStep = Number(button.dataset.onboardingStep) || 0;
+                this.renderOnboarding();
+            }
+        });
 
         document.getElementById('addTaskButton')?.addEventListener('click', () => this.openTaskModal());
         document.getElementById('taskForm')?.addEventListener('submit', (event) => {
@@ -173,6 +191,16 @@ class ProductivityDashboard {
         document.getElementById('adminUserSearch')?.addEventListener('input', () => this.renderAdminUsers());
         document.getElementById('adminRoleFilter')?.addEventListener('change', () => this.renderAdminUsers());
         document.getElementById('adminStatusFilter')?.addEventListener('change', () => this.renderAdminUsers());
+        document.querySelectorAll('[data-proof-filter]').forEach((button) => {
+            button.addEventListener('click', () => {
+                this.proofFilter = button.dataset.proofFilter;
+                document.querySelectorAll('[data-proof-filter]').forEach((item) => item.classList.remove('active'));
+                button.classList.add('active');
+                this.loadProofLibrary();
+            });
+        });
+        document.getElementById('proofDateFrom')?.addEventListener('change', () => this.loadProofLibrary());
+        document.getElementById('proofDateTo')?.addEventListener('change', () => this.loadProofLibrary());
 
         document.querySelectorAll('[data-close-modal]').forEach((button) => {
             button.addEventListener('click', () => this.closeModal(false));
@@ -360,12 +388,18 @@ class ProductivityDashboard {
         if (this.currentPage === 'admin') {
             await this.loadAdmin();
         }
+        if (this.currentPage === 'library') {
+            await this.loadProofLibrary();
+        }
     }
 
     pageFromPath(pathname) {
         const cleanPath = String(pathname || '').replace(/\/$/, '') || '/';
         if (cleanPath === '/app') {
             return 'dashboard';
+        }
+        if (cleanPath === '/proofs') {
+            return 'library';
         }
         const match = Object.entries(this.routes).find(([, path]) => path === cleanPath);
         return match?.[0] || 'dashboard';
@@ -798,8 +832,6 @@ class ProductivityDashboard {
             await Promise.all([this.loadStats(), this.loadTasks(), this.loadDashboard()]);
         } catch (error) {
             this.toast(error.message, 'error');
-        } finally {
-            this.setLoading(button, false);
         }
     }
 
@@ -1454,6 +1486,134 @@ class ProductivityDashboard {
         }
     }
 
+    onboardingSteps() {
+        return [
+            {
+                icon: 'fa-bolt',
+                title: 'Добро пожаловать в PulseDesk',
+                text: 'Управляйте задачами, привычками и режимом сна в одном месте.',
+                examples: ['Один рабочий ритм для фокуса, здоровья и регулярности.'],
+                action: 'Начать',
+            },
+            {
+                icon: 'fa-list-check',
+                title: 'Задачи без хаоса',
+                text: 'Создавайте задачи, ставьте дедлайны, добавляйте чеклист и запускайте Pomodoro прямо из карточки.',
+                examples: ['Дедлайн с временем', 'Подзадачи внутри задачи', 'Фильтры: сегодня, завтра, неделя'],
+                action: 'Далее',
+            },
+            {
+                icon: 'fa-repeat',
+                title: 'Привычки с доказательствами',
+                text: 'Отмечайте ежедневный прогресс обычной галочкой или требуйте proof: заметку, фото либо аудио.',
+                examples: ['Прочитать химию -> записать пересказ', 'Тренировка -> прикрепить фото'],
+                action: 'Далее',
+            },
+            {
+                icon: 'fa-moon',
+                title: 'Сон как часть продуктивности',
+                text: 'Настройте режим сна, записывайте ночи, смотрите Sleep Score, статистику и рекомендации.',
+                examples: ['Цель сна', 'Журнал записей', 'Подсказки по регулярности'],
+                action: 'Далее',
+            },
+            {
+                icon: 'fa-compass',
+                title: 'Вы готовы',
+                text: 'Переключайтесь через боковое меню или нижнюю навигацию на телефоне. Повторить обучение можно в профиле.',
+                examples: ['Начните с одной задачи и одной привычки на сегодня.'],
+                action: 'Перейти в приложение',
+            },
+        ];
+    }
+
+    maybeOpenOnboarding() {
+        const completed = this.currentUser?.onboarding_completed;
+        const localCompleted = localStorage.getItem('onboarding_completed') === 'true';
+        if (completed === false || (completed === undefined && !localCompleted)) {
+            window.setTimeout(() => this.openOnboarding(false), 250);
+        }
+    }
+
+    openOnboarding(manual = false) {
+        this.onboardingStep = 0;
+        this.renderOnboarding();
+        const layer = document.getElementById('onboardingLayer');
+        layer?.classList.add('active');
+        layer?.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        if (manual) {
+            this.toast('Обучение открыто', 'info');
+        }
+    }
+
+    renderOnboarding() {
+        const steps = this.onboardingSteps();
+        const index = Math.max(0, Math.min(this.onboardingStep, steps.length - 1));
+        this.onboardingStep = index;
+        const step = steps[index];
+
+        this.setText('onboardingStepCounter', `Шаг ${index + 1} из ${steps.length}`);
+        this.setText('onboardingTitle', step.title);
+        this.setText('onboardingText', step.text);
+        this.setText('onboardingNext', step.action);
+        document.getElementById('onboardingBack').disabled = index === 0;
+
+        const visual = document.getElementById('onboardingVisual');
+        if (visual) {
+            visual.innerHTML = `<span><i class="fas ${step.icon}" aria-hidden="true"></i></span>`;
+        }
+
+        const examples = document.getElementById('onboardingExamples');
+        if (examples) {
+            examples.innerHTML = step.examples.map((item) => `<span>${this.escape(item)}</span>`).join('');
+        }
+
+        const dots = document.getElementById('onboardingDots');
+        if (dots) {
+            dots.innerHTML = steps.map((_, dotIndex) => `
+                <button class="onboarding-dot ${dotIndex === index ? 'active' : ''}" type="button" data-onboarding-step="${dotIndex}" aria-label="Шаг ${dotIndex + 1}"></button>
+            `).join('');
+        }
+    }
+
+    nextOnboardingStep() {
+        const lastIndex = this.onboardingSteps().length - 1;
+        if (this.onboardingStep >= lastIndex) {
+            this.completeOnboarding();
+            return;
+        }
+        this.onboardingStep += 1;
+        this.renderOnboarding();
+    }
+
+    previousOnboardingStep() {
+        if (this.onboardingStep === 0) return;
+        this.onboardingStep -= 1;
+        this.renderOnboarding();
+    }
+
+    async completeOnboarding() {
+        const layer = document.getElementById('onboardingLayer');
+        layer?.classList.remove('active');
+        layer?.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        localStorage.setItem('onboarding_completed', 'true');
+        if (this.currentUser) {
+            this.currentUser.onboarding_completed = true;
+            localStorage.setItem('user', JSON.stringify(this.currentUser));
+        }
+        try {
+            const updated = await this.request('/api/user/onboarding', {
+                method: 'PATCH',
+                body: JSON.stringify({ completed: true }),
+            });
+            this.currentUser = { ...this.currentUser, ...updated };
+            localStorage.setItem('user', JSON.stringify(this.currentUser));
+        } catch (error) {
+            this.toast('Не удалось сохранить статус обучения, повторю локально', 'error');
+        }
+    }
+
     async loadAdmin() {
         if (this.currentUser?.role !== 'admin') return;
 
@@ -1480,6 +1640,153 @@ class ProductivityDashboard {
             if (usersTable) {
                 usersTable.innerHTML = `<tr><td colspan="8">${this.escape(error.message)}</td></tr>`;
             }
+        }
+    }
+
+    async loadProofLibrary() {
+        const container = document.getElementById('proofLibraryList');
+        if (!container) return;
+        container.innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton-row"></div>').join('');
+
+        const params = new URLSearchParams({ page: '1', limit: '48' });
+        if (this.proofFilter && this.proofFilter !== 'all') {
+            params.set('type', this.proofFilter);
+        }
+        const dateFrom = document.getElementById('proofDateFrom')?.value;
+        const dateTo = document.getElementById('proofDateTo')?.value;
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
+
+        try {
+            this.proofLibrary = await this.request(`/api/proofs?${params.toString()}`);
+            this.renderProofLibrary();
+        } catch (error) {
+            container.innerHTML = this.emptyState('fa-images', 'Не удалось загрузить библиотеку', error.message);
+        }
+    }
+
+    renderProofLibrary() {
+        const container = document.getElementById('proofLibraryList');
+        if (!container) return;
+        const items = this.proofLibrary?.items || [];
+        if (!items.length) {
+            container.innerHTML = this.emptyState('fa-images', 'Пока нет файлов', 'Добавьте привычку с подтверждением фото или аудио.');
+            return;
+        }
+
+        container.innerHTML = items.map((item) => {
+            const meta = `${this.formatDate(item.completion_date)} · ${this.escape(item.habit_title)}`;
+            if (item.type === 'photo') {
+                return `
+                    <article class="proof-card proof-photo-card">
+                        <button class="proof-thumb" type="button" data-action="proof-preview" data-id="${item.id}" aria-label="Открыть фото">
+                            <img loading="lazy" data-proof-media="${item.id}" alt="${this.escape(item.habit_title)}">
+                        </button>
+                        <div class="proof-card-body">
+                            <strong>${this.escape(item.habit_title)}</strong>
+                            <span>${meta}</span>
+                        </div>
+                        <button class="icon-button danger" type="button" data-action="proof-delete" data-id="${item.id}" aria-label="Удалить файл"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                    </article>
+                `;
+            }
+            return `
+                <article class="proof-card proof-audio-card">
+                    <div class="proof-card-body">
+                        <strong><i class="fas fa-wave-square" aria-hidden="true"></i> ${this.escape(item.habit_title)}</strong>
+                        <span>${meta}</span>
+                        <audio controls preload="none" data-proof-media="${item.id}"></audio>
+                    </div>
+                    <button class="icon-button danger" type="button" data-action="proof-delete" data-id="${item.id}" aria-label="Удалить файл"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                </article>
+            `;
+        }).join('');
+        this.loadProofMedia();
+    }
+
+    proofFileURL(item) {
+        return window.PulseDeskAPI.apiUrl(`/api/habits/${item.habit_id}/proofs/${item.id}/file`);
+    }
+
+    async fetchProofMedia(item) {
+        if (this.proofMediaURLs.has(item.id)) {
+            return this.proofMediaURLs.get(item.id);
+        }
+        const headers = new Headers();
+        const token = localStorage.getItem('token');
+        if (token) {
+            headers.set('Authorization', `Bearer ${token}`);
+        }
+        const response = await fetch(this.proofFileURL(item), { headers });
+        if (!response.ok) {
+            throw new Error(`Failed to load proof media: ${response.status}`);
+        }
+        const url = URL.createObjectURL(await response.blob());
+        this.proofMediaURLs.set(item.id, url);
+        return url;
+    }
+
+    async loadProofMedia() {
+        const items = this.proofLibrary?.items || [];
+        await Promise.all(items.map(async (item) => {
+            const elements = document.querySelectorAll(`[data-proof-media="${item.id}"]`);
+            if (!elements.length) return;
+            try {
+                const url = await this.fetchProofMedia(item);
+                elements.forEach((element) => {
+                    element.src = url;
+                });
+            } catch (error) {
+                elements.forEach((element) => {
+                    element.replaceWith(this.proofMediaErrorNode());
+                });
+            }
+        }));
+    }
+
+    proofMediaErrorNode() {
+        const node = document.createElement('div');
+        node.className = 'proof-media-error';
+        node.textContent = 'Не удалось загрузить файл';
+        return node;
+    }
+
+    async openProofPreview(id) {
+        const item = (this.proofLibrary?.items || []).find((proof) => String(proof.id) === String(id));
+        if (!item) return;
+        this.setText('proofPreviewTitle', item.habit_title);
+        this.setText('proofPreviewMeta', `${this.proofTypeLabel(item.type)} · ${this.formatDate(item.completion_date)}`);
+        const frame = document.getElementById('proofPreviewFrame');
+        if (frame) {
+            frame.innerHTML = '<div class="skeleton-row"></div>';
+            this.openModal('proofPreviewModal');
+            try {
+                const mediaURL = await this.fetchProofMedia(item);
+                if (item.type === 'photo') {
+                    frame.innerHTML = `<img src="${mediaURL}" alt="${this.escape(item.habit_title)}">`;
+                } else {
+                    frame.innerHTML = `<audio controls autoplay src="${mediaURL}"></audio>`;
+                }
+            } catch (error) {
+                frame.innerHTML = '<div class="proof-media-error">Не удалось загрузить файл</div>';
+            }
+        }
+    }
+
+    async deleteProof(id) {
+        if (!(await this.confirm('Удалить файл? Это действие нельзя отменить.', 'Удалить'))) return;
+        try {
+            await this.request(`/api/proofs/${id}`, { method: 'DELETE' });
+            const mediaURL = this.proofMediaURLs.get(Number(id)) || this.proofMediaURLs.get(id);
+            if (mediaURL) {
+                URL.revokeObjectURL(mediaURL);
+                this.proofMediaURLs.delete(Number(id));
+                this.proofMediaURLs.delete(id);
+            }
+            this.toast('Файл удален', 'success');
+            await this.loadProofLibrary();
+        } catch (error) {
+            this.toast(error.message, 'error');
         }
     }
 
@@ -1562,6 +1869,9 @@ class ProductivityDashboard {
                         <button class="icon-button" type="button" data-action="admin-status" data-id="${user.id}" data-disabled="${!user.disabled}" aria-label="${user.disabled ? 'Включить' : 'Отключить'} пользователя">
                             <i class="fas ${user.disabled ? 'fa-user-check' : 'fa-user-slash'}" aria-hidden="true"></i>
                         </button>
+                        <button class="icon-button" type="button" data-action="admin-sessions" data-id="${user.id}" aria-label="Показать устройства">
+                            <i class="fas fa-laptop" aria-hidden="true"></i>
+                        </button>
                         <button class="icon-button danger" type="button" data-action="admin-delete" data-id="${user.id}" data-name="${this.escape(user.name)}" data-email="${this.escape(user.email)}" aria-label="Удалить пользователя">
                             <i class="fas fa-trash" aria-hidden="true"></i>
                         </button>
@@ -1606,8 +1916,6 @@ class ProductivityDashboard {
             await this.loadAdmin();
         } catch (error) {
             this.toast(error.message, 'error');
-        } finally {
-            this.setLoading(button, false);
         }
     }
 
@@ -1620,6 +1928,33 @@ class ProductivityDashboard {
             await this.loadAdmin();
         } catch (error) {
             this.toast(error.message, 'error');
+        }
+    }
+
+    async loadAdminSessions(id) {
+        const user = (this.adminUsers || []).find((item) => String(item.id) === String(id));
+        const list = document.getElementById('adminSessionsList');
+        if (!list || !user) return;
+        this.setText('adminSessionsHint', `${user.email}`);
+        list.innerHTML = Array.from({ length: 3 }, () => '<div class="skeleton-row"></div>').join('');
+        try {
+            const sessions = await this.request(`/api/admin/users/${id}/sessions`);
+            if (!sessions?.length) {
+                list.innerHTML = this.emptyState('fa-laptop', 'Входов пока нет', 'Сессии появятся после следующего входа пользователя.');
+                return;
+            }
+            list.innerHTML = sessions.map((session) => `
+                <article class="session-card">
+                    <span class="session-icon"><i class="fas ${session.device_type === 'mobile' ? 'fa-mobile-screen' : 'fa-display'}" aria-hidden="true"></i></span>
+                    <div>
+                        <strong>${this.escape(session.browser)} / ${this.escape(session.os)}</strong>
+                        <span>${this.escape(session.ip || 'ip скрыт')} · ${this.formatDateTime(session.last_active_at)}</span>
+                        <small>${this.escape(session.user_agent || 'Unknown')}</small>
+                    </div>
+                </article>
+            `).join('');
+        } catch (error) {
+            list.innerHTML = this.emptyState('fa-triangle-exclamation', 'Не удалось загрузить сессии', error.message);
         }
     }
 
@@ -1638,6 +1973,12 @@ class ProductivityDashboard {
         document.getElementById('profileNameInput').value = name;
         document.getElementById('passwordUsername').value = this.currentUser.email || '';
         document.querySelectorAll('.admin-only').forEach((item) => {
+            item.classList.toggle('hidden', this.currentUser.role !== 'admin');
+        });
+        document.querySelectorAll('.user-library-link').forEach((item) => {
+            item.classList.toggle('hidden', this.currentUser.role === 'admin');
+        });
+        document.querySelectorAll('.admin-library-link').forEach((item) => {
             item.classList.toggle('hidden', this.currentUser.role !== 'admin');
         });
         document.body.classList.toggle('has-admin', this.currentUser.role === 'admin');
@@ -1661,7 +2002,10 @@ class ProductivityDashboard {
             'sleep-edit': () => this.editSleepLog(id),
             'sleep-delete': () => this.deleteSleepLog(id),
             'admin-status': () => this.updateAdminStatus(id, button.dataset.disabled === 'true'),
+            'admin-sessions': () => this.loadAdminSessions(id),
             'admin-delete': () => this.deleteAdminUser(id, button.dataset.name, button.dataset.email),
+            'proof-preview': () => this.openProofPreview(id),
+            'proof-delete': () => this.deleteProof(id),
         };
 
         actions[action]?.();

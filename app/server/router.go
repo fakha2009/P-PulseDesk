@@ -22,16 +22,18 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 	userRepo := repository.NewUserRepository(db.DB)
 	taskRepo := repository.NewTaskRepository(db.DB)
 	habitRepo := repository.NewHabitRepository(db.DB)
+	proofRepo := repository.NewProofRepository(db.DB)
 	sleepRepo := repository.NewSleepRepository(db.DB)
 	adminRepo := repository.NewAdminRepository(db.DB)
+	storageService := storage.NewFromEnv()
 
 	userService := service.NewUserService(userRepo)
 	taskService := service.NewTaskService(taskRepo)
 	habitService := service.NewHabitService(habitRepo)
+	proofService := service.NewProofService(proofRepo, storageService)
 	sleepService := service.NewSleepService(sleepRepo)
 	statsService := service.NewStatsService(taskService, habitService)
 	adminService := service.NewAdminService(adminRepo)
-	storageService := storage.NewFromEnv()
 
 	passwordManager := utils.NewPasswordManager()
 	jwtManager := utils.NewJWTManager(cfg.JWT.Secret)
@@ -39,6 +41,7 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 	authHandler := handlers.NewAuthHandler(userService, passwordManager, jwtManager)
 	taskHandler := handlers.NewTaskHandler(taskService)
 	habitHandler := handlers.NewHabitHandler(habitService, storageService)
+	proofHandler := handlers.NewProofHandler(proofService)
 	sleepHandler := handlers.NewSleepHandler(sleepService)
 	statsHandler := handlers.NewStatsHandler(statsService)
 	adminHandler := handlers.NewAdminHandler(adminService)
@@ -86,8 +89,12 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 	{
 		api.GET("/stats", statsHandler.Get)
 		api.PATCH("/user/theme", authHandler.UpdateTheme)
+		api.PATCH("/user/onboarding", authHandler.UpdateOnboarding)
 		api.GET("/user/preferences", authHandler.Preferences)
 		api.PATCH("/user/preferences", authHandler.UpdatePreferences)
+
+		api.GET("/proofs", proofHandler.List)
+		api.DELETE("/proofs/:id", proofHandler.Delete)
 
 		api.GET("/tasks", taskHandler.GetAll)
 		api.POST("/tasks", taskHandler.Create)
@@ -121,6 +128,7 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 	{
 		admin.GET("/stats", adminHandler.Stats)
 		admin.GET("/users", adminHandler.Users)
+		admin.GET("/users/:id/sessions", adminHandler.UserSessions)
 		admin.PATCH("/users/:id/role", adminHandler.UpdateUserRole)
 		admin.PATCH("/users/:id/status", adminHandler.UpdateUserStatus)
 		admin.DELETE("/users/:id", adminHandler.DeleteUser)

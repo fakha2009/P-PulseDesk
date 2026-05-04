@@ -38,6 +38,25 @@ func (h *AdminHandler) Users(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResponse{Success: true, Data: users})
 }
 
+func (h *AdminHandler) UserSessions(c *gin.Context) {
+	targetUserID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || targetUserID <= 0 {
+		c.JSON(http.StatusBadRequest, models.APIResponse{Success: false, Error: "Invalid user id"})
+		return
+	}
+
+	sessions, err := h.service.UserSessions(targetUserID)
+	if errors.Is(err, service.ErrAdminUserNotFound) {
+		c.JSON(http.StatusNotFound, models.APIResponse{Success: false, Error: "User not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{Success: false, Error: "Failed to load sessions"})
+		return
+	}
+	c.JSON(http.StatusOK, models.APIResponse{Success: true, Data: sessions})
+}
+
 func (h *AdminHandler) UpdateUserRole(c *gin.Context) {
 	targetUserID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || targetUserID <= 0 {

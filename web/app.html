@@ -69,9 +69,17 @@
                     <i class="fas fa-user-gear" aria-hidden="true"></i>
                     <span>Профиль</span>
                 </button>
+                <button class="nav-link library-link user-library-link" type="button" data-page="library">
+                    <i class="fas fa-images" aria-hidden="true"></i>
+                    <span>Библиотека</span>
+                </button>
                 <button class="nav-link admin-only hidden" type="button" data-page="admin">
                     <i class="fas fa-shield-halved" aria-hidden="true"></i>
                     <span>Admin</span>
+                </button>
+                <button class="nav-link library-link admin-library-link hidden" type="button" data-page="library">
+                    <i class="fas fa-images" aria-hidden="true"></i>
+                    <span>Библиотека</span>
                 </button>
             </nav>
 
@@ -537,7 +545,57 @@
                             </button>
                         </div>
                     </section>
+
+                    <section class="surface-section account-panel">
+                        <div class="section-head">
+                            <div>
+                                <h2>Обучение</h2>
+                                <span>Быстрый обзор PulseDesk</span>
+                            </div>
+                        </div>
+                        <div class="onboarding-replay-card">
+                            <span class="soft-icon"><i class="fas fa-compass" aria-hidden="true"></i></span>
+                            <div>
+                                <strong>Нужна подсказка?</strong>
+                                <p>Откройте приветственный тур еще раз: задачи, привычки, proof и сон.</p>
+                            </div>
+                            <button class="btn btn-secondary" type="button" id="replayOnboardingButton">
+                                Показать обучение
+                            </button>
+                        </div>
+                    </section>
                 </div>
+            </section>
+
+            <section class="page" id="library-page" aria-labelledby="library-title">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">proof library</p>
+                        <h1 id="library-title">Библиотека</h1>
+                        <p>Все фото и аудио подтверждения привычек в одном месте.</p>
+                    </div>
+                </div>
+
+                <section class="surface-section">
+                    <div class="library-toolbar">
+                        <div class="segmented" role="tablist" aria-label="Фильтр библиотеки">
+                            <button class="active" type="button" data-proof-filter="all">Все</button>
+                            <button type="button" data-proof-filter="photo">Фото</button>
+                            <button type="button" data-proof-filter="audio">Аудио</button>
+                        </div>
+                        <div class="library-date-filters">
+                            <label>
+                                <span>С</span>
+                                <input id="proofDateFrom" type="date">
+                            </label>
+                            <label>
+                                <span>До</span>
+                                <input id="proofDateTo" type="date">
+                            </label>
+                        </div>
+                    </div>
+                    <div class="proof-library-grid" id="proofLibraryList"></div>
+                </section>
             </section>
 
             <section class="page" id="admin-page" aria-labelledby="admin-title">
@@ -604,6 +662,16 @@
                         </table>
                     </div>
                 </section>
+
+                <section class="surface-section admin-sessions-section">
+                    <div class="section-head">
+                        <div>
+                            <h2>Устройства и входы</h2>
+                            <span id="adminSessionsHint">Выберите пользователя в таблице</span>
+                        </div>
+                    </div>
+                    <div class="session-list" id="adminSessionsList"></div>
+                </section>
             </section>
         </main>
 
@@ -616,6 +684,26 @@
             <button class="bottom-link" type="button" data-page="profile" aria-label="Профиль"><i class="fas fa-user-gear" aria-hidden="true"></i></button>
             <button class="bottom-link admin-only hidden" type="button" data-page="admin" aria-label="Admin"><i class="fas fa-shield-halved" aria-hidden="true"></i></button>
         </nav>
+    </div>
+
+    <div class="onboarding-layer" id="onboardingLayer" aria-hidden="true">
+        <section class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+            <div class="onboarding-visual" id="onboardingVisual">
+                <span><i class="fas fa-bolt" aria-hidden="true"></i></span>
+            </div>
+            <div class="onboarding-copy">
+                <span class="onboarding-step" id="onboardingStepCounter">Шаг 1 из 5</span>
+                <h2 id="onboardingTitle">Добро пожаловать в PulseDesk</h2>
+                <p id="onboardingText">Управляйте задачами, привычками и режимом сна в одном месте.</p>
+                <div class="onboarding-examples" id="onboardingExamples"></div>
+            </div>
+            <div class="onboarding-dots" id="onboardingDots" aria-label="Прогресс обучения"></div>
+            <div class="onboarding-actions">
+                <button class="btn btn-secondary" type="button" id="onboardingBack">Назад</button>
+                <button class="text-button" type="button" id="onboardingSkip">Пропустить</button>
+                <button class="btn btn-primary" type="button" id="onboardingNext">Начать</button>
+            </div>
+        </section>
     </div>
 
     <div class="modal-layer" id="modalLayer" aria-hidden="true">
@@ -813,6 +901,20 @@
                 <button class="btn btn-secondary" type="button" data-close-modal>Отмена</button>
                 <button class="btn btn-danger" type="button" id="confirmAction">Удалить</button>
             </div>
+        </section>
+
+        <section class="modal proof-preview-modal" id="proofPreviewModal" role="dialog" aria-modal="true" aria-labelledby="proofPreviewTitle">
+            <div class="modal-head">
+                <div class="modal-title-block">
+                    <span class="modal-icon" aria-hidden="true"><i class="fas fa-image"></i></span>
+                    <div>
+                        <h2 id="proofPreviewTitle">Просмотр файла</h2>
+                        <p id="proofPreviewMeta">Подтверждение привычки</p>
+                    </div>
+                </div>
+                <button class="icon-button" type="button" data-close-modal aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            </div>
+            <div class="proof-preview-frame" id="proofPreviewFrame"></div>
         </section>
     </div>
 

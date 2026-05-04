@@ -68,10 +68,13 @@ func (r *AdminRepository) Users() ([]models.AdminUserSummary, error) {
 			u.role,
 			u.disabled,
 			u.created_at,
+			MAX(us.last_active_at) AS last_active_at,
+			COUNT(DISTINCT us.id) AS session_count,
 			COUNT(DISTINCT t.id) AS task_count,
 			COUNT(DISTINCT h.id) AS habit_count,
 			COUNT(DISTINCT sl.id) AS sleep_log_count
 		FROM users u
+		LEFT JOIN user_sessions us ON us.user_id = u.id
 		LEFT JOIN tasks t ON t.user_id = u.id
 		LEFT JOIN habits h ON h.user_id = u.id
 		LEFT JOIN sleep_logs sl ON sl.user_id = u.id
@@ -93,6 +96,8 @@ func (r *AdminRepository) Users() ([]models.AdminUserSummary, error) {
 			&user.Role,
 			&user.Disabled,
 			&user.CreatedAt,
+			&user.LastActiveAt,
+			&user.SessionCount,
 			&user.TaskCount,
 			&user.HabitCount,
 			&user.SleepLogCount,
@@ -132,4 +137,34 @@ func (r *AdminRepository) UpdateUserStatus(id int64, disabled bool) error {
 func (r *AdminRepository) DeleteUser(id int64) error {
 	_, err := r.db.Exec("DELETE FROM users WHERE id = $1", id)
 	return err
+}
+
+func (r *AdminRepository) UserSessions(userID int64) ([]models.UserSession, error) {
+	rows, err := r.db.Query(`
+		SELECT id, user_id, device_type, browser, os, COALESCE(ip, ''), COALESCE(user_agent, ''), last_active_at, created_at
+		FROM user_sessions
+		WHERE user_id = $1
+		ORDER BY last_active_at DESC
+		LIMIT 20
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	sessions := make([]models.UserSession, 0)
+	for rows.Next() {
+		var session models.UserSession
+		if err := rows.Scan(
+			&session.ID, &session.UserID, &session.DeviceType, &session.Browser, &session.OS,
+			&session.IP, &session.UserAgent, &session.LastActiveAt, &session.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, session)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return sessions, nil
 }

@@ -12,6 +12,8 @@ web/calendar.html
 web/habits.html
 web/sleep.html
 web/profile.html
+web/library.html
+web/proofs.html
 web/admin.html
 
 .vercel

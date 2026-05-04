@@ -5,7 +5,7 @@ const apiBaseUrl = process.env.API_BASE_URL || '';
 const target = path.join(__dirname, '..', 'config.js');
 const webRoot = path.join(__dirname, '..');
 const appHtml = path.join(webRoot, 'app.html');
-const appRoutes = ['dashboard', 'tasks', 'calendar', 'habits', 'sleep', 'profile', 'admin'];
+const appRoutes = ['dashboard', 'tasks', 'calendar', 'habits', 'sleep', 'profile', 'library', 'proofs', 'admin'];
 
 fs.writeFileSync(
   target,

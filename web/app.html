@@ -568,9 +568,9 @@
             </section>
 
             <section class="page" id="library-page" aria-labelledby="library-title">
-                <div class="page-head">
+                <div class="page-head library-page-head">
                     <div>
-                        <p class="eyebrow">proof library</p>
+                        <p class="library-badge">Proof Library</p>
                         <h1 id="library-title">Библиотека</h1>
                         <p>Все фото и аудио подтверждения привычек в одном месте.</p>
                     </div>
@@ -579,9 +579,9 @@
                 <section class="surface-section">
                     <div class="library-toolbar">
                         <div class="segmented" role="tablist" aria-label="Фильтр библиотеки">
-                            <button class="active" type="button" data-proof-filter="all">Все</button>
-                            <button type="button" data-proof-filter="photo">Фото</button>
-                            <button type="button" data-proof-filter="audio">Аудио</button>
+                            <button class="active" type="button" role="tab" aria-selected="true" data-proof-filter="all">Все</button>
+                            <button type="button" role="tab" aria-selected="false" data-proof-filter="photo">Фото</button>
+                            <button type="button" role="tab" aria-selected="false" data-proof-filter="audio">Аудио</button>
                         </div>
                         <div class="library-date-filters">
                             <label>
@@ -592,6 +592,9 @@
                                 <span>До</span>
                                 <input id="proofDateTo" type="date">
                             </label>
+                            <button class="btn btn-secondary library-reset hidden" type="button" id="proofDateReset">
+                                Сбросить
+                            </button>
                         </div>
                     </div>
                     <div class="proof-library-grid" id="proofLibraryList"></div>
@@ -915,6 +918,13 @@
                 <button class="icon-button" type="button" data-close-modal aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
             </div>
             <div class="proof-preview-frame" id="proofPreviewFrame"></div>
+            <div class="modal-footer proof-preview-actions">
+                <button class="btn btn-secondary" type="button" data-close-modal>Закрыть</button>
+                <button class="btn btn-danger" type="button" id="proofPreviewDelete">
+                    <i class="fas fa-trash" aria-hidden="true"></i>
+                    Удалить
+                </button>
+            </div>
         </section>
     </div>
 

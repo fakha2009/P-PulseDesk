@@ -25,6 +25,7 @@ class ProductivityDashboard {
         this.proofFilter = 'all';
         this.proofLibrary = { items: [], total: 0, page: 1, limit: 24 };
         this.proofMediaURLs = new Map();
+        this.activeProofPreviewID = null;
         this.editingSleepLog = null;
         this.searchTimer = null;
         this.clockTimer = null;
@@ -194,13 +195,18 @@ class ProductivityDashboard {
         document.querySelectorAll('[data-proof-filter]').forEach((button) => {
             button.addEventListener('click', () => {
                 this.proofFilter = button.dataset.proofFilter;
-                document.querySelectorAll('[data-proof-filter]').forEach((item) => item.classList.remove('active'));
+                document.querySelectorAll('[data-proof-filter]').forEach((item) => {
+                    const active = item === button;
+                    item.classList.toggle('active', active);
+                    item.setAttribute('aria-selected', String(active));
+                });
                 button.classList.add('active');
                 this.loadProofLibrary();
             });
         });
         document.getElementById('proofDateFrom')?.addEventListener('change', () => this.loadProofLibrary());
         document.getElementById('proofDateTo')?.addEventListener('change', () => this.loadProofLibrary());
+        document.getElementById('proofDateReset')?.addEventListener('click', () => this.resetProofDateFilters());
 
         document.querySelectorAll('[data-close-modal]').forEach((button) => {
             button.addEventListener('click', () => this.closeModal(false));
@@ -213,6 +219,11 @@ class ProductivityDashboard {
         });
 
         document.getElementById('confirmAction')?.addEventListener('click', () => this.closeModal(true));
+        document.getElementById('proofPreviewDelete')?.addEventListener('click', async () => {
+            if (this.activeProofPreviewID) {
+                await this.deleteProof(this.activeProofPreviewID);
+            }
+        });
 
         document.addEventListener('click', (event) => this.handleActionClick(event));
         document.addEventListener('change', (event) => {
@@ -1656,6 +1667,7 @@ class ProductivityDashboard {
         const dateTo = document.getElementById('proofDateTo')?.value;
         if (dateFrom) params.set('date_from', dateFrom);
         if (dateTo) params.set('date_to', dateTo);
+        this.syncProofDateReset();
 
         try {
             this.proofLibrary = await this.request(`/api/proofs?${params.toString()}`);
@@ -1670,38 +1682,86 @@ class ProductivityDashboard {
         if (!container) return;
         const items = this.proofLibrary?.items || [];
         if (!items.length) {
-            container.innerHTML = this.emptyState('fa-images', 'Пока нет файлов', 'Добавьте привычку с подтверждением фото или аудио.');
+            container.innerHTML = this.libraryEmptyState();
             return;
         }
 
         container.innerHTML = items.map((item) => {
-            const meta = `${this.formatDate(item.completion_date)} · ${this.escape(item.habit_title)}`;
+            const date = this.formatDate(item.completion_date);
+            const label = this.libraryProofTypeLabel(item.type);
             if (item.type === 'photo') {
                 return `
                     <article class="proof-card proof-photo-card">
                         <button class="proof-thumb" type="button" data-action="proof-preview" data-id="${item.id}" aria-label="Открыть фото">
                             <img loading="lazy" data-proof-media="${item.id}" alt="${this.escape(item.habit_title)}">
                         </button>
-                        <div class="proof-card-body">
-                            <strong>${this.escape(item.habit_title)}</strong>
-                            <span>${meta}</span>
+                        <div class="proof-card-actions">
+                            <button class="icon-button" type="button" data-action="proof-preview" data-id="${item.id}" aria-label="Открыть подтверждение"><i class="fas fa-up-right-and-down-left-from-center" aria-hidden="true"></i></button>
+                            <button class="icon-button danger" type="button" data-action="proof-delete" data-id="${item.id}" aria-label="Удалить подтверждение"><i class="fas fa-trash" aria-hidden="true"></i></button>
                         </div>
-                        <button class="icon-button danger" type="button" data-action="proof-delete" data-id="${item.id}" aria-label="Удалить файл"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                        <div class="proof-card-body">
+                            <div class="proof-card-title">
+                                <strong>${this.escape(item.habit_title)}</strong>
+                                <span class="proof-type-badge">${label}</span>
+                            </div>
+                            <div class="proof-card-meta">
+                                <span><i class="fas fa-calendar-day" aria-hidden="true"></i>${date}</span>
+                                <small>${this.escape(item.file_name || 'Фото подтверждение')}</small>
+                            </div>
+                        </div>
                     </article>
                 `;
             }
             return `
                 <article class="proof-card proof-audio-card">
-                    <div class="proof-card-body">
-                        <strong><i class="fas fa-wave-square" aria-hidden="true"></i> ${this.escape(item.habit_title)}</strong>
-                        <span>${meta}</span>
-                        <audio controls preload="none" data-proof-media="${item.id}"></audio>
+                    <div class="proof-card-actions">
+                        <button class="icon-button danger" type="button" data-action="proof-delete" data-id="${item.id}" aria-label="Удалить подтверждение"><i class="fas fa-trash" aria-hidden="true"></i></button>
                     </div>
-                    <button class="icon-button danger" type="button" data-action="proof-delete" data-id="${item.id}" aria-label="Удалить файл"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                    <div class="proof-card-body">
+                        <div class="proof-card-title">
+                            <strong><i class="fas fa-wave-square" aria-hidden="true"></i> ${this.escape(item.habit_title)}</strong>
+                            <span class="proof-type-badge">${label}</span>
+                        </div>
+                        <div class="proof-card-meta">
+                            <span><i class="fas fa-calendar-day" aria-hidden="true"></i>${date}</span>
+                            <small>${this.escape(item.file_name || 'Аудио подтверждение')}</small>
+                        </div>
+                        <div class="proof-audio-shell">
+                            <audio controls preload="none" data-proof-media="${item.id}"></audio>
+                        </div>
+                    </div>
                 </article>
             `;
         }).join('');
         this.loadProofMedia();
+    }
+
+    syncProofDateReset() {
+        const hasFilters = Boolean(document.getElementById('proofDateFrom')?.value || document.getElementById('proofDateTo')?.value);
+        document.getElementById('proofDateReset')?.classList.toggle('hidden', !hasFilters);
+    }
+
+    resetProofDateFilters() {
+        const from = document.getElementById('proofDateFrom');
+        const to = document.getElementById('proofDateTo');
+        if (from) from.value = '';
+        if (to) to.value = '';
+        this.syncProofDateReset();
+        this.loadProofLibrary();
+    }
+
+    libraryEmptyState() {
+        return `
+            <div class="empty-state library-empty-state">
+                <i class="fas fa-images" aria-hidden="true"></i>
+                <h3>Пока нет подтверждений</h3>
+                <p>Добавьте привычку с фото или аудио, и она появится здесь.</p>
+                <button class="btn btn-primary" type="button" data-page-jump="habits">
+                    <i class="fas fa-repeat" aria-hidden="true"></i>
+                    Перейти к привычкам
+                </button>
+            </div>
+        `;
     }
 
     proofFileURL(item) {
@@ -1754,8 +1814,9 @@ class ProductivityDashboard {
     async openProofPreview(id) {
         const item = (this.proofLibrary?.items || []).find((proof) => String(proof.id) === String(id));
         if (!item) return;
+        this.activeProofPreviewID = item.id;
         this.setText('proofPreviewTitle', item.habit_title);
-        this.setText('proofPreviewMeta', `${this.proofTypeLabel(item.type)} · ${this.formatDate(item.completion_date)}`);
+        this.setText('proofPreviewMeta', `${this.libraryProofTypeLabel(item.type)} · ${this.formatDate(item.completion_date)}`);
         const frame = document.getElementById('proofPreviewFrame');
         if (frame) {
             frame.innerHTML = '<div class="skeleton-row"></div>';
@@ -1774,7 +1835,7 @@ class ProductivityDashboard {
     }
 
     async deleteProof(id) {
-        if (!(await this.confirm('Удалить файл? Это действие нельзя отменить.', 'Удалить'))) return;
+        if (!(await this.confirm('Удалить подтверждение? Это действие нельзя отменить.', 'Удалить'))) return;
         try {
             await this.request(`/api/proofs/${id}`, { method: 'DELETE' });
             const mediaURL = this.proofMediaURLs.get(Number(id)) || this.proofMediaURLs.get(id);
@@ -1783,8 +1844,14 @@ class ProductivityDashboard {
                 this.proofMediaURLs.delete(Number(id));
                 this.proofMediaURLs.delete(id);
             }
+            this.proofLibrary.items = (this.proofLibrary.items || []).filter((item) => String(item.id) !== String(id));
+            this.proofLibrary.total = Math.max(0, (this.proofLibrary.total || 0) - 1);
+            if (String(this.activeProofPreviewID) === String(id)) {
+                this.activeProofPreviewID = null;
+                this.closeModal(false);
+            }
             this.toast('Файл удален', 'success');
-            await this.loadProofLibrary();
+            this.renderProofLibrary();
         } catch (error) {
             this.toast(error.message, 'error');
         }
@@ -1985,6 +2052,12 @@ class ProductivityDashboard {
     }
 
     handleActionClick(event) {
+        const jump = event.target.closest('[data-page-jump]');
+        if (jump) {
+            this.showPage(jump.dataset.pageJump);
+            return;
+        }
+
         const button = event.target.closest('[data-action]');
         if (!button) return;
 
@@ -2295,6 +2368,13 @@ class ProductivityDashboard {
             photo_or_audio: 'Нужно фото или аудио',
             none: 'Обычная галочка',
         }[type || 'none'] || 'Обычная галочка';
+    }
+
+    libraryProofTypeLabel(type) {
+        return {
+            photo: 'Фото',
+            audio: 'Аудио',
+        }[type] || 'Файл';
     }
 
     formatDate(value) {

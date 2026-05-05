@@ -114,6 +114,16 @@ func (r *ProofRepository) Get(userID, proofID int64) (*models.HabitProof, error)
 }
 
 func (r *ProofRepository) Delete(userID, proofID int64) error {
-	_, err := r.db.Exec("DELETE FROM habit_proofs WHERE id = $1 AND user_id = $2", proofID, userID)
-	return err
+	result, err := r.db.Exec("DELETE FROM habit_proofs WHERE id = $1 AND user_id = $2", proofID, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

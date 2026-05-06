@@ -30,8 +30,10 @@ type JWTConfig struct {
 }
 
 type ServerConfig struct {
-	Port       int
-	CORSOrigin string
+	Port                    int
+	CORSOrigin              string
+	UploadRateLimit         int
+	UploadRateWindowSeconds int
 }
 
 func Load() (*Config, error) {
@@ -54,8 +56,10 @@ func Load() (*Config, error) {
 			Secret: getEnv("JWT_SECRET", ""),
 		},
 		Server: ServerConfig{
-			Port:       getEnvInt("PORT", getEnvInt("APP_PORT", 8082)),
-			CORSOrigin: getEnv("CORS_ORIGIN", ""),
+			Port:                    getEnvInt("PORT", getEnvInt("APP_PORT", 8082)),
+			CORSOrigin:              getEnv("CORS_ORIGIN", ""),
+			UploadRateLimit:         getEnvInt("UPLOAD_RATE_LIMIT", 10),
+			UploadRateWindowSeconds: getEnvInt("UPLOAD_RATE_WINDOW_SECONDS", 60),
 		},
 	}
 

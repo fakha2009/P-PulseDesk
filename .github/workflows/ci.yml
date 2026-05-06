@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "codex/**"
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: "Run optional Playwright e2e job"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        run: go build ./...
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Syntax check
+        run: |
+          node --check web/app.js
+          node --check web/auth.js
+          node --check web/api-config.js
+          node --check web/lib/api-client.js
+          node --check web/ui/helpers.js
+
+  e2e:
+    name: E2E optional
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.run_e2e == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          (cd web && npm install)
+
+      - name: Run Playwright if configured
+        run: |
+          if ls playwright.config.* web/playwright.config.* 1>/dev/null 2>&1; then
+            npx playwright install --with-deps
+            npx playwright test
+          else
+            echo "Playwright is not configured yet; skipping optional e2e job."
+          fi

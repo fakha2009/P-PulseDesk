@@ -14,10 +14,10 @@ var ErrProofNotFound = errors.New("proof not found")
 
 type ProofService struct {
 	repo    *repository.ProofRepository
-	storage *storage.Service
+	storage storage.FileStore
 }
 
-func NewProofService(repo *repository.ProofRepository, storageService *storage.Service) *ProofService {
+func NewProofService(repo *repository.ProofRepository, storageService storage.FileStore) *ProofService {
 	return &ProofService{repo: repo, storage: storageService}
 }
 

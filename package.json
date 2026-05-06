@@ -1,6 +1,9 @@
 {
   "scripts": {
-    "build": "cd web && npm run build"
+    "build": "cd web && npm run build",
+    "test:e2e": "playwright test"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
 }

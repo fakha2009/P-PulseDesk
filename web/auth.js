@@ -155,7 +155,7 @@ class AuthManager {
     }
 
     apiFetch(path, options = {}) {
-        return window.PulseDeskAPI.apiFetch(path, options);
+        return window.PulseDeskClient.apiFetch(path, options);
     }
 
     appUrl() {
@@ -182,6 +182,8 @@ class AuthManager {
     }
 
     toast(message, type = 'info') {
+        window.PulseDeskUI.toast(message, type);
+        return;
         const stack = document.getElementById('toastStack');
         if (!stack) return;
 
@@ -202,6 +204,7 @@ class AuthManager {
     }
 
     escape(value) {
+        return window.PulseDeskUI.escapeHTML(value);
         return String(value ?? '').replace(/[&<>"']/g, (char) => ({
             '&': '&amp;',
             '<': '&lt;',

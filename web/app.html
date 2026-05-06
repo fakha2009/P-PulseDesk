@@ -14,6 +14,8 @@
     <meta name="api-base-url" content="">
     <script src="config.js"></script>
     <script src="api-config.js"></script>
+    <script src="lib/api-client.js"></script>
+    <script src="ui/helpers.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -604,6 +606,12 @@
                         </div>
                     </div>
                     <div class="proof-library-grid" id="proofLibraryList"></div>
+                    <div class="library-pagination">
+                        <button class="btn btn-secondary hidden" type="button" id="proofLoadMore">
+                            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                            Показать ещё
+                        </button>
+                    </div>
                 </section>
             </section>
 

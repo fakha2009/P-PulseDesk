@@ -19,10 +19,10 @@ import (
 
 type HabitHandler struct {
 	service *service.HabitService
-	storage *storagepkg.Service
+	storage storagepkg.FileStore
 }
 
-func NewHabitHandler(s *service.HabitService, storage *storagepkg.Service) *HabitHandler {
+func NewHabitHandler(s *service.HabitService, storage storagepkg.FileStore) *HabitHandler {
 	return &HabitHandler{service: s, storage: storage}
 }
 

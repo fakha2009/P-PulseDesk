@@ -92,7 +92,13 @@ func (r *ProofRepository) List(filter ProofFilter) (*models.ProofLibraryResponse
 		return nil, err
 	}
 
-	return &models.ProofLibraryResponse{Items: items, Page: page, Limit: limit, Total: total}, nil
+	return &models.ProofLibraryResponse{
+		Items:   items,
+		Page:    page,
+		Limit:   limit,
+		Total:   total,
+		HasMore: page*limit < total,
+	}, nil
 }
 
 func (r *ProofRepository) Get(userID, proofID int64) (*models.HabitProof, error) {

@@ -51,6 +51,8 @@ func main() {
 	router.StaticFile("/favicon.svg", "./web/favicon.svg")
 	router.StaticFile("/manifest.webmanifest", "./web/manifest.webmanifest")
 	router.Static("/assets", "./web/assets")
+	router.Static("/lib", "./web/lib")
+	router.Static("/ui", "./web/ui")
 	router.StaticFile("/config.js", "./web/config.js")
 	router.StaticFile("/sw.js", "./web/sw.js")
 	router.GET("/", func(c *gin.Context) {

@@ -1,6 +1,9 @@
 .env
 .env.*
 !.env.example
+node_modules/
+test-results/
+playwright-report/
 app.exe
 app.exe~
 *.log

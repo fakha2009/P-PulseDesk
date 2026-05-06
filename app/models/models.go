@@ -83,10 +83,11 @@ type ProofLibraryItem struct {
 }
 
 type ProofLibraryResponse struct {
-	Items []ProofLibraryItem `json:"items"`
-	Page  int                `json:"page"`
-	Limit int                `json:"limit"`
-	Total int                `json:"total"`
+	Items   []ProofLibraryItem `json:"items"`
+	Page    int                `json:"page"`
+	Limit   int                `json:"limit"`
+	Total   int                `json:"total"`
+	HasMore bool               `json:"has_more"`
 }
 
 type AdminRoleUpdate struct {

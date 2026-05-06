@@ -23,7 +23,8 @@ class ProductivityDashboard {
         this.audioChunks = [];
         this.onboardingStep = 0;
         this.proofFilter = 'all';
-        this.proofLibrary = { items: [], total: 0, page: 1, limit: 24 };
+        this.proofLibrary = { items: [], total: 0, page: 1, limit: 24, has_more: false };
+        this.proofLibraryLoading = false;
         this.proofMediaURLs = new Map();
         this.proofAudioDurations = new Map();
         this.activeProofPreviewID = null;
@@ -203,12 +204,13 @@ class ProductivityDashboard {
                     item.setAttribute('aria-selected', String(active));
                 });
                 button.classList.add('active');
-                this.loadProofLibrary();
+                this.loadProofLibrary({ reset: true });
             });
         });
-        document.getElementById('proofDateFrom')?.addEventListener('change', () => this.loadProofLibrary());
-        document.getElementById('proofDateTo')?.addEventListener('change', () => this.loadProofLibrary());
+        document.getElementById('proofDateFrom')?.addEventListener('change', () => this.loadProofLibrary({ reset: true }));
+        document.getElementById('proofDateTo')?.addEventListener('change', () => this.loadProofLibrary({ reset: true }));
         document.getElementById('proofDateReset')?.addEventListener('click', () => this.resetProofDateFilters());
+        document.getElementById('proofLoadMore')?.addEventListener('click', () => this.loadProofLibrary({ append: true }));
         document.getElementById('proofSearch')?.addEventListener('input', () => {
             window.clearTimeout(this.proofSearchTimer);
             this.proofSearchTimer = window.setTimeout(() => this.renderProofLibrary(), 150);
@@ -280,7 +282,7 @@ class ProductivityDashboard {
     }
 
     apiFetch(path, options = {}) {
-        return window.PulseDeskAPI.apiFetch(path, options);
+        return window.PulseDeskClient.apiFetch(path, options);
     }
 
     async loadAll() {
@@ -1673,12 +1675,20 @@ class ProductivityDashboard {
         }
     }
 
-    async loadProofLibrary() {
+    async loadProofLibrary(options = {}) {
         const container = document.getElementById('proofLibraryList');
         if (!container) return;
-        container.innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton-row"></div>').join('');
+        if (this.proofLibraryLoading) return;
 
-        const params = new URLSearchParams({ page: '1', limit: '60' });
+        const append = Boolean(options.append);
+        const nextPage = append ? (this.proofLibrary?.page || 1) + 1 : 1;
+        this.proofLibraryLoading = true;
+        this.setProofLoadMoreState(true);
+        if (!append) {
+            container.innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton-row"></div>').join('');
+        }
+
+        const params = new URLSearchParams({ page: String(nextPage), limit: '24' });
         if (this.proofFilter && this.proofFilter !== 'all') {
             params.set('type', this.proofFilter);
         }
@@ -1689,10 +1699,25 @@ class ProductivityDashboard {
         this.syncProofDateReset();
 
         try {
-            this.proofLibrary = await this.request(`/api/proofs?${params.toString()}`);
+            const response = await this.request(`/api/proofs?${params.toString()}`);
+            if (append) {
+                const existing = this.proofLibrary?.items || [];
+                const known = new Set(existing.map((item) => String(item.id)));
+                const incoming = (response.items || []).filter((item) => !known.has(String(item.id)));
+                this.proofLibrary = { ...response, items: existing.concat(incoming) };
+            } else {
+                this.proofLibrary = response;
+            }
             this.renderProofLibrary();
         } catch (error) {
-            container.innerHTML = this.emptyState('fa-images', 'Не удалось загрузить библиотеку', error.message);
+            if (append) {
+                this.toast(error.message, 'error');
+            } else {
+                container.innerHTML = this.emptyState('fa-images', 'Не удалось загрузить библиотеку', error.message);
+            }
+        } finally {
+            this.proofLibraryLoading = false;
+            this.setProofLoadMoreState(false);
         }
     }
 
@@ -1704,6 +1729,7 @@ class ProductivityDashboard {
         const items = this.filteredProofItems(allItems);
         if (!items.length) {
             container.innerHTML = this.libraryEmptyState(allItems.length);
+            this.setProofLoadMoreState(false);
             return;
         }
 
@@ -1716,7 +1742,19 @@ class ProductivityDashboard {
                 </div>
             </section>
         `).join('');
+        this.setProofLoadMoreState(false);
         this.loadProofMedia();
+    }
+
+    setProofLoadMoreState(loading) {
+        const button = document.getElementById('proofLoadMore');
+        if (!button) return;
+        const hasMore = Boolean(this.proofLibrary?.has_more);
+        button.classList.toggle('hidden', !hasMore);
+        button.disabled = Boolean(loading);
+        button.innerHTML = loading
+            ? '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Загрузка'
+            : '<i class="fas fa-chevron-down" aria-hidden="true"></i> Показать ещё';
     }
 
     renderProofCard(item) {
@@ -1892,7 +1930,7 @@ class ProductivityDashboard {
         if (from) from.value = '';
         if (to) to.value = '';
         this.syncProofDateReset();
-        this.loadProofLibrary();
+        this.loadProofLibrary({ reset: true });
     }
 
     libraryEmptyState(hasBaseItems = false) {
@@ -2505,6 +2543,8 @@ class ProductivityDashboard {
     }
 
     toast(message, type = 'info') {
+        window.PulseDeskUI.toast(message, type);
+        return;
         const stack = document.getElementById('toastStack');
         if (!stack) return;
 
@@ -2525,30 +2565,15 @@ class ProductivityDashboard {
     }
 
     emptyState(icon, title, text) {
-        return `
-            <div class="empty-state">
-                <i class="fas ${icon}" aria-hidden="true"></i>
-                <h3>${title}</h3>
-                <p>${text}</p>
-            </div>
-        `;
+        return window.PulseDeskUI.emptyState(icon, title, text);
     }
 
     setText(id, value) {
-        const element = document.getElementById(id);
-        if (element) {
-            element.textContent = value;
-        }
+        window.PulseDeskUI.setText(id, value);
     }
 
     escape(value) {
-        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;',
-        })[char]);
+        return window.PulseDeskUI.escapeHTML(value);
     }
 
     safeColor(value) {

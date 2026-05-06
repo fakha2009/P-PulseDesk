@@ -1859,6 +1859,12 @@ a i {
     gap: 16px;
 }
 
+.library-pagination {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 2px;
+}
+
 .proof-date-group {
     display: grid;
     gap: 10px;

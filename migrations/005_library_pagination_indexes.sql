@@ -1,0 +1,16 @@
+CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_sort_order ON tasks(user_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_task_subtasks_task_id ON task_subtasks(task_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_last_active_at ON user_sessions(last_active_at);
+CREATE INDEX IF NOT EXISTS idx_habits_user_id ON habits(user_id);
+CREATE INDEX IF NOT EXISTS idx_habit_checks_habit_id ON habit_checks(habit_id);
+CREATE INDEX IF NOT EXISTS idx_habit_checks_user_id ON habit_checks(user_id);
+CREATE INDEX IF NOT EXISTS idx_habit_proofs_habit_id ON habit_proofs(habit_id);
+CREATE INDEX IF NOT EXISTS idx_habit_proofs_user_id ON habit_proofs(user_id);
+CREATE INDEX IF NOT EXISTS idx_habit_proofs_completion_date ON habit_proofs(completion_date);
+CREATE INDEX IF NOT EXISTS idx_habit_proofs_library ON habit_proofs(user_id, type, completion_date DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sleep_logs_user_id ON sleep_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_sleep_logs_sleep_date ON sleep_logs(sleep_date);

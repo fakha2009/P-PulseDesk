@@ -23,6 +23,12 @@ type StoredFile struct {
 	Size     int64
 }
 
+type FileStore interface {
+	Save(ctx context.Context, userID, habitID int64, proofType, mimeType string, file multipart.File, header *multipart.FileHeader) (StoredFile, error)
+	Open(ctx context.Context, objectPath string) (io.ReadCloser, error)
+	Delete(ctx context.Context, objectPath string) error
+}
+
 type Service struct {
 	supabaseURL string
 	serviceKey  string

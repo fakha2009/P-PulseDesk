@@ -48,13 +48,20 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 
 	authMiddleware := middleware.NewAuthMiddleware(jwtManager, db.DB)
 	rateLimiter := middleware.NewRateLimiter(20, time.Minute)
+	uploadRateLimiter := middleware.NewRateLimiter(cfg.Server.UploadRateLimit, time.Duration(cfg.Server.UploadRateWindowSeconds)*time.Second)
 
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	router := gin.New()
-	router.Use(gin.Logger(), gin.Recovery(), CORSMiddleware(cfg.Server.CORSOrigin))
+	router.Use(
+		middleware.RequestID(),
+		middleware.StructuredLogger(),
+		gin.Recovery(),
+		middleware.SecurityHeaders(),
+		CORSMiddleware(cfg.Server.CORSOrigin),
+	)
 
 	router.GET("/api/health", func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
@@ -111,7 +118,7 @@ func NewRouter(cfg *config.Config, db *database.DB) *gin.Engine {
 		api.PUT("/habits/:id", habitHandler.Update)
 		api.DELETE("/habits/:id", habitHandler.Delete)
 		api.PATCH("/habits/:id/check", habitHandler.Check)
-		api.POST("/habits/:id/proofs", habitHandler.CreateProof)
+		api.POST("/habits/:id/proofs", uploadRateLimiter.Middleware(), habitHandler.CreateProof)
 		api.GET("/habits/:id/proofs/:proofID/file", habitHandler.ProofFile)
 
 		api.GET("/sleep/settings", sleepHandler.GetSettings)

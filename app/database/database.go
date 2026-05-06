@@ -9,6 +9,8 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"habitracker/migrations"
 )
 
 type DB struct {
@@ -37,167 +39,48 @@ func New(databaseURL string) (*DB, error) {
 }
 
 func (db *DB) Migrate() error {
-	migrations := []string{
-		`CREATE TABLE IF NOT EXISTS users (
-			id BIGSERIAL PRIMARY KEY,
-			name VARCHAR(120) NOT NULL,
-			email VARCHAR(190) NOT NULL UNIQUE,
-			password_hash TEXT NOT NULL,
-			role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
-			theme TEXT NOT NULL DEFAULT 'dark' CHECK (theme IN ('light','dark')),
-			disabled BOOLEAN NOT NULL DEFAULT FALSE,
-			onboarding_completed BOOLEAN NOT NULL DEFAULT TRUE,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'dark'`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT TRUE`,
-		`DO $$
-		BEGIN
-			IF NOT EXISTS (
-				SELECT 1 FROM pg_constraint WHERE conname = 'users_theme_check'
-			) THEN
-				ALTER TABLE users ADD CONSTRAINT users_theme_check CHECK (theme IN ('light','dark'));
-			END IF;
-		END $$`,
-		`CREATE TABLE IF NOT EXISTS user_preferences (
-			user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-			theme TEXT NOT NULL DEFAULT 'dark' CHECK (theme IN ('dark','light','system')),
-			accent TEXT NOT NULL DEFAULT 'purple-blue' CHECK (accent IN ('purple-blue','blue','emerald','rose','amber')),
-			density TEXT NOT NULL DEFAULT 'comfortable' CHECK (density IN ('comfortable','compact')),
-			motion TEXT NOT NULL DEFAULT 'normal' CHECK (motion IN ('normal','reduced')),
-			background_glow BOOLEAN NOT NULL DEFAULT TRUE,
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)`,
-		`CREATE TABLE IF NOT EXISTS user_sessions (
-			id BIGSERIAL PRIMARY KEY,
-			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			device_type TEXT NOT NULL DEFAULT 'desktop' CHECK (device_type IN ('mobile','desktop')),
-			browser TEXT NOT NULL DEFAULT 'Unknown',
-			os TEXT NOT NULL DEFAULT 'Unknown',
-			ip TEXT,
-			user_agent TEXT,
-			last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)`,
-		`CREATE TABLE IF NOT EXISTS tasks (
-			id BIGSERIAL PRIMARY KEY,
-			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			title VARCHAR(255) NOT NULL,
-			description TEXT,
-			priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low','medium','high')),
-			due_date TIMESTAMPTZ NULL,
-			recurrence TEXT NOT NULL DEFAULT 'none' CHECK (recurrence IN ('none','daily','weekly','monthly')),
-			sort_order INT NOT NULL DEFAULT 0,
-			completed BOOLEAN NOT NULL DEFAULT FALSE,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)`,
-		`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence TEXT NOT NULL DEFAULT 'none'`,
-		`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0`,
-		`DO $$
-		BEGIN
-			IF NOT EXISTS (
-				SELECT 1 FROM pg_constraint WHERE conname = 'tasks_recurrence_check'
-			) THEN
-				ALTER TABLE tasks ADD CONSTRAINT tasks_recurrence_check CHECK (recurrence IN ('none','daily','weekly','monthly'));
-			END IF;
-		END $$`,
-		`CREATE TABLE IF NOT EXISTS task_subtasks (
-			id BIGSERIAL PRIMARY KEY,
-			task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-			title VARCHAR(255) NOT NULL,
-			completed BOOLEAN NOT NULL DEFAULT FALSE,
-			sort_order INT NOT NULL DEFAULT 0,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)`,
-		`CREATE TABLE IF NOT EXISTS habits (
-			id BIGSERIAL PRIMARY KEY,
-			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			title VARCHAR(255) NOT NULL,
-			description TEXT,
-			color VARCHAR(32),
-			proof_type TEXT NOT NULL DEFAULT 'none',
-			proof_prompt TEXT NULL,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)`,
-		`ALTER TABLE habits ADD COLUMN IF NOT EXISTS proof_type TEXT NOT NULL DEFAULT 'none'`,
-		`ALTER TABLE habits ADD COLUMN IF NOT EXISTS proof_prompt TEXT NULL`,
-		`DO $$
-		BEGIN
-			IF NOT EXISTS (
-				SELECT 1 FROM pg_constraint WHERE conname = 'habits_proof_type_check'
-			) THEN
-				ALTER TABLE habits ADD CONSTRAINT habits_proof_type_check CHECK (proof_type IN ('none','note','photo','audio','photo_or_audio'));
-			END IF;
-		END $$`,
-		`CREATE TABLE IF NOT EXISTS habit_checks (
-			id BIGSERIAL PRIMARY KEY,
-			habit_id BIGINT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
-			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			check_date DATE NOT NULL,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			UNIQUE (habit_id, check_date)
-		)`,
-		`CREATE TABLE IF NOT EXISTS habit_proofs (
-			id BIGSERIAL PRIMARY KEY,
-			habit_id BIGINT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
-			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			completion_date DATE NOT NULL,
-			type TEXT NOT NULL CHECK (type IN ('note','photo','audio')),
-			text_note TEXT NULL,
-			file_url TEXT NULL,
-			file_name TEXT NULL,
-			mime_type TEXT NULL,
-			file_size BIGINT NULL,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			UNIQUE (habit_id, completion_date)
-		)`,
-		`CREATE TABLE IF NOT EXISTS sleep_settings (
-			id BIGSERIAL PRIMARY KEY,
-			user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-			target_bed_time TIME NOT NULL,
-			target_wake_time TIME NOT NULL,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)`,
-		`CREATE TABLE IF NOT EXISTS sleep_logs (
-			id BIGSERIAL PRIMARY KEY,
-			user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			sleep_date DATE NOT NULL,
-			bed_time TIMESTAMPTZ NOT NULL,
-			wake_time TIMESTAMPTZ NOT NULL,
-			duration_minutes INT NOT NULL,
-			quality TEXT NOT NULL CHECK (quality IN ('poor','normal','great')),
-			note TEXT NULL,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			UNIQUE (user_id, sleep_date)
-		)`,
-		`CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed)`,
-		`CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`,
-		`CREATE INDEX IF NOT EXISTS idx_tasks_sort_order ON tasks(user_id, sort_order)`,
-		`CREATE INDEX IF NOT EXISTS idx_task_subtasks_task_id ON task_subtasks(task_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_user_sessions_last_active_at ON user_sessions(last_active_at)`,
-		`CREATE INDEX IF NOT EXISTS idx_habits_user_id ON habits(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_habit_checks_habit_id ON habit_checks(habit_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_habit_checks_user_id ON habit_checks(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_habit_proofs_habit_id ON habit_proofs(habit_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_habit_proofs_user_id ON habit_proofs(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_habit_proofs_completion_date ON habit_proofs(completion_date)`,
-		`CREATE INDEX IF NOT EXISTS idx_sleep_logs_user_id ON sleep_logs(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_sleep_logs_sleep_date ON sleep_logs(sleep_date)`,
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to ensure schema_migrations: %w", err)
 	}
 
-	for _, migration := range migrations {
-		if _, err := db.Exec(migration); err != nil {
-			return fmt.Errorf("migration failed: %w", err)
+	all, err := migrations.All()
+	if err != nil {
+		return fmt.Errorf("failed to load migrations: %w", err)
+	}
+
+	for _, migration := range all {
+		var exists bool
+		if err := db.QueryRow("SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)", migration.Version).Scan(&exists); err != nil {
+			return fmt.Errorf("failed to check migration %s: %w", migration.Version, err)
+		}
+		if exists {
+			continue
+		}
+
+		tx, err := db.Begin()
+		if err != nil {
+			return fmt.Errorf("failed to start migration %s: %w", migration.Version, err)
+		}
+		if _, err := tx.Exec(migration.SQL); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("migration %s_%s failed: %w", migration.Version, migration.Name, err)
+		}
+		if _, err := tx.Exec(
+			"INSERT INTO schema_migrations (version, name) VALUES ($1, $2) ON CONFLICT (version) DO NOTHING",
+			migration.Version,
+			migration.Name,
+		); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("failed to record migration %s: %w", migration.Version, err)
+		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("failed to commit migration %s: %w", migration.Version, err)
 		}
 	}
 

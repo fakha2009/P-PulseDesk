@@ -2544,24 +2544,6 @@ class ProductivityDashboard {
 
     toast(message, type = 'info') {
         window.PulseDeskUI.toast(message, type);
-        return;
-        const stack = document.getElementById('toastStack');
-        if (!stack) return;
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info'}" aria-hidden="true"></i>
-            <span>${this.escape(message)}</span>
-            <button type="button" aria-label="Закрыть"><i class="fas fa-xmark" aria-hidden="true"></i></button>
-        `;
-        toast.querySelector('button').addEventListener('click', () => toast.remove());
-        stack.appendChild(toast);
-        window.setTimeout(() => toast.classList.add('show'), 20);
-        window.setTimeout(() => {
-            toast.classList.remove('show');
-            window.setTimeout(() => toast.remove(), 250);
-        }, 4500);
     }
 
     emptyState(icon, title, text) {
@@ -2774,3 +2756,4 @@ class ProductivityDashboard {
 document.addEventListener('DOMContentLoaded', () => {
     new ProductivityDashboard();
 });
+

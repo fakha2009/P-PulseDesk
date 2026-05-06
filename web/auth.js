@@ -183,24 +183,6 @@ class AuthManager {
 
     toast(message, type = 'info') {
         window.PulseDeskUI.toast(message, type);
-        return;
-        const stack = document.getElementById('toastStack');
-        if (!stack) return;
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-circle-exclamation'}" aria-hidden="true"></i>
-            <span>${this.escape(message)}</span>
-            <button type="button" aria-label="Close"><i class="fas fa-xmark" aria-hidden="true"></i></button>
-        `;
-        toast.querySelector('button').addEventListener('click', () => toast.remove());
-        stack.appendChild(toast);
-        window.setTimeout(() => toast.classList.add('show'), 20);
-        window.setTimeout(() => {
-            toast.classList.remove('show');
-            window.setTimeout(() => toast.remove(), 250);
-        }, 4500);
     }
 
     escape(value) {
@@ -218,3 +200,4 @@ class AuthManager {
 document.addEventListener('DOMContentLoaded', () => {
     new AuthManager();
 });
+

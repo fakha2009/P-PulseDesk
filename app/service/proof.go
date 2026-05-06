@@ -22,7 +22,7 @@ func NewProofService(repo *repository.ProofRepository, storageService *storage.S
 }
 
 func (s *ProofService) List(userID int64, page, limit int, proofType string, dateFrom, dateTo *time.Time) (*models.ProofLibraryResponse, error) {
-	if proofType != "" && proofType != "photo" && proofType != "audio" {
+	if proofType != "" && proofType != "photo" && proofType != "audio" && proofType != "note" {
 		proofType = ""
 	}
 	return s.repo.List(repository.ProofFilter{

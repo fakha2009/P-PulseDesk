@@ -73,6 +73,7 @@ type ProofLibraryItem struct {
 	HabitID        int64     `json:"habit_id"`
 	HabitTitle     string    `json:"habit_title"`
 	Type           string    `json:"type"`
+	TextNote       string    `json:"text_note,omitempty"`
 	FileURL        string    `json:"file_url,omitempty"`
 	FileName       string    `json:"file_name,omitempty"`
 	MimeType       string    `json:"mime_type,omitempty"`

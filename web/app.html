@@ -572,18 +572,24 @@
                     <div>
                         <p class="library-badge">Proof Library</p>
                         <h1 id="library-title">Библиотека</h1>
-                        <p>Все фото и аудио подтверждения привычек в одном месте.</p>
+                        <p>Все подтверждения привычек в одном месте.</p>
                     </div>
                 </div>
 
                 <section class="surface-section">
+                    <div class="library-stats" id="proofLibraryStats" aria-label="Статистика библиотеки"></div>
                     <div class="library-toolbar">
                         <div class="segmented" role="tablist" aria-label="Фильтр библиотеки">
                             <button class="active" type="button" role="tab" aria-selected="true" data-proof-filter="all">Все</button>
                             <button type="button" role="tab" aria-selected="false" data-proof-filter="photo">Фото</button>
                             <button type="button" role="tab" aria-selected="false" data-proof-filter="audio">Аудио</button>
+                            <button type="button" role="tab" aria-selected="false" data-proof-filter="note">Заметки</button>
                         </div>
                         <div class="library-date-filters">
+                            <label class="library-search-field" for="proofSearch">
+                                <i class="fas fa-search" aria-hidden="true"></i>
+                                <input id="proofSearch" type="search" placeholder="Поиск по привычке или файлу">
+                            </label>
                             <label>
                                 <span>С</span>
                                 <input id="proofDateFrom" type="date">

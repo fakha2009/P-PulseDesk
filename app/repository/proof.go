@@ -34,9 +34,9 @@ func (r *ProofRepository) List(filter ProofFilter) (*models.ProofLibraryResponse
 		limit = 24
 	}
 
-	where := "WHERE hp.user_id = $1 AND hp.file_url IS NOT NULL AND hp.file_url <> ''"
+	where := "WHERE hp.user_id = $1 AND (hp.type = 'note' OR (hp.file_url IS NOT NULL AND hp.file_url <> ''))"
 	args := []interface{}{filter.UserID}
-	if filter.Type == "photo" || filter.Type == "audio" {
+	if filter.Type == "photo" || filter.Type == "audio" || filter.Type == "note" {
 		args = append(args, filter.Type)
 		where += " AND hp.type = " + placeholder(len(args))
 	}
@@ -63,7 +63,7 @@ func (r *ProofRepository) List(filter ProofFilter) (*models.ProofLibraryResponse
 	queryArgs := append([]interface{}{}, args...)
 	queryArgs = append(queryArgs, limit, offset)
 	query := `
-		SELECT hp.id, hp.habit_id, h.title, hp.type, hp.file_url, COALESCE(hp.file_name, ''),
+		SELECT hp.id, hp.habit_id, h.title, hp.type, COALESCE(hp.text_note, ''), COALESCE(hp.file_url, ''), COALESCE(hp.file_name, ''),
 			COALESCE(hp.mime_type, ''), COALESCE(hp.file_size, 0), hp.completion_date, hp.created_at
 		FROM habit_proofs hp
 		JOIN habits h ON h.id = hp.habit_id AND h.user_id = hp.user_id
@@ -81,7 +81,7 @@ func (r *ProofRepository) List(filter ProofFilter) (*models.ProofLibraryResponse
 	for rows.Next() {
 		var item models.ProofLibraryItem
 		if err := rows.Scan(
-			&item.ID, &item.HabitID, &item.HabitTitle, &item.Type, &item.FileURL, &item.FileName,
+			&item.ID, &item.HabitID, &item.HabitTitle, &item.Type, &item.TextNote, &item.FileURL, &item.FileName,
 			&item.MimeType, &item.FileSize, &item.CompletionDate, &item.CreatedAt,
 		); err != nil {
 			return nil, err

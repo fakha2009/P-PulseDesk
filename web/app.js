@@ -25,7 +25,9 @@ class ProductivityDashboard {
         this.proofFilter = 'all';
         this.proofLibrary = { items: [], total: 0, page: 1, limit: 24 };
         this.proofMediaURLs = new Map();
+        this.proofAudioDurations = new Map();
         this.activeProofPreviewID = null;
+        this.proofSearchTimer = null;
         this.editingSleepLog = null;
         this.searchTimer = null;
         this.clockTimer = null;
@@ -207,6 +209,10 @@ class ProductivityDashboard {
         document.getElementById('proofDateFrom')?.addEventListener('change', () => this.loadProofLibrary());
         document.getElementById('proofDateTo')?.addEventListener('change', () => this.loadProofLibrary());
         document.getElementById('proofDateReset')?.addEventListener('click', () => this.resetProofDateFilters());
+        document.getElementById('proofSearch')?.addEventListener('input', () => {
+            window.clearTimeout(this.proofSearchTimer);
+            this.proofSearchTimer = window.setTimeout(() => this.renderProofLibrary(), 150);
+        });
 
         document.querySelectorAll('[data-close-modal]').forEach((button) => {
             button.addEventListener('click', () => this.closeModal(false));
@@ -226,6 +232,19 @@ class ProductivityDashboard {
         });
 
         document.addEventListener('click', (event) => this.handleActionClick(event));
+        document.addEventListener('toggle', (event) => {
+            const menu = event.target.closest?.('.proof-action-menu');
+            if (!menu?.open) return;
+            document.querySelectorAll('.proof-action-menu[open]').forEach((item) => {
+                if (item !== menu) item.removeAttribute('open');
+            });
+        }, true);
+        document.addEventListener('loadedmetadata', (event) => {
+            const audio = event.target.closest?.('audio[data-proof-duration]');
+            if (!audio || !Number.isFinite(audio.duration)) return;
+            this.proofAudioDurations.set(audio.dataset.proofDuration, audio.duration);
+            this.setText(`proofDuration-${audio.dataset.proofDuration}`, this.formatDuration(audio.duration));
+        }, true);
         document.addEventListener('change', (event) => {
             const select = event.target.closest('[data-action="admin-role"]');
             if (select) {
@@ -1659,7 +1678,7 @@ class ProductivityDashboard {
         if (!container) return;
         container.innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton-row"></div>').join('');
 
-        const params = new URLSearchParams({ page: '1', limit: '48' });
+        const params = new URLSearchParams({ page: '1', limit: '60' });
         if (this.proofFilter && this.proofFilter !== 'all') {
             params.set('type', this.proofFilter);
         }
@@ -1680,60 +1699,186 @@ class ProductivityDashboard {
     renderProofLibrary() {
         const container = document.getElementById('proofLibraryList');
         if (!container) return;
-        const items = this.proofLibrary?.items || [];
+        this.renderProofLibraryStats();
+        const allItems = this.proofLibrary?.items || [];
+        const items = this.filteredProofItems(allItems);
         if (!items.length) {
-            container.innerHTML = this.libraryEmptyState();
+            container.innerHTML = this.libraryEmptyState(allItems.length);
             return;
         }
 
-        container.innerHTML = items.map((item) => {
-            const date = this.formatDate(item.completion_date);
-            const label = this.libraryProofTypeLabel(item.type);
-            if (item.type === 'photo') {
-                return `
-                    <article class="proof-card proof-photo-card">
-                        <button class="proof-thumb" type="button" data-action="proof-preview" data-id="${item.id}" aria-label="Открыть фото">
-                            <img loading="lazy" data-proof-media="${item.id}" alt="${this.escape(item.habit_title)}">
-                        </button>
-                        <div class="proof-card-actions">
-                            <button class="icon-button" type="button" data-action="proof-preview" data-id="${item.id}" aria-label="Открыть подтверждение"><i class="fas fa-up-right-and-down-left-from-center" aria-hidden="true"></i></button>
-                            <button class="icon-button danger" type="button" data-action="proof-delete" data-id="${item.id}" aria-label="Удалить подтверждение"><i class="fas fa-trash" aria-hidden="true"></i></button>
-                        </div>
-                        <div class="proof-card-body">
-                            <div class="proof-card-title">
-                                <strong>${this.escape(item.habit_title)}</strong>
-                                <span class="proof-type-badge">${label}</span>
-                            </div>
-                            <div class="proof-card-meta">
-                                <span><i class="fas fa-calendar-day" aria-hidden="true"></i>${date}</span>
-                                <small>${this.escape(item.file_name || 'Фото подтверждение')}</small>
-                            </div>
-                        </div>
-                    </article>
-                `;
-            }
-            return `
-                <article class="proof-card proof-audio-card">
-                    <div class="proof-card-actions">
-                        <button class="icon-button danger" type="button" data-action="proof-delete" data-id="${item.id}" aria-label="Удалить подтверждение"><i class="fas fa-trash" aria-hidden="true"></i></button>
+        const groups = this.groupProofItemsByDate(items);
+        container.innerHTML = groups.map((group) => `
+            <section class="proof-date-group" aria-label="${group.label}">
+                <h2>${group.label}</h2>
+                <div class="proof-date-grid">
+                    ${group.items.map((item) => this.renderProofCard(item)).join('')}
+                </div>
+            </section>
+        `).join('');
+        this.loadProofMedia();
+    }
+
+    renderProofCard(item) {
+        const date = this.formatDate(item.completion_date);
+        const label = this.libraryProofTypeLabel(item.type);
+        const icon = item.type === 'photo' ? 'fa-image' : item.type === 'audio' ? 'fa-wave-square' : 'fa-note-sticky';
+        const fileLabel = this.escape(item.file_name || this.defaultProofFileLabel(item.type));
+        const duration = this.proofAudioDurations.get(String(item.id)) || this.proofAudioDurations.get(item.id);
+        const durationText = item.type === 'audio' ? this.formatDuration(duration) : '';
+        const title = this.escape(item.habit_title);
+        const menuLabel = item.type === 'audio' ? 'Прослушать' : 'Открыть';
+        const canDownload = item.type === 'photo' || item.type === 'audio' || item.type === 'note';
+        const downloadAction = canDownload
+            ? `<button type="button" data-action="proof-download" data-id="${item.id}"><i class="fas fa-download" aria-hidden="true"></i> Скачать</button>`
+            : '';
+        const header = `
+            <div class="proof-card-header">
+                <span class="proof-type-badge">${label}</span>
+                <details class="proof-action-menu">
+                    <summary aria-label="Действия с подтверждением"><i class="fas fa-ellipsis" aria-hidden="true"></i></summary>
+                    <div class="proof-menu-panel">
+                        <button type="button" data-action="proof-preview" data-id="${item.id}"><i class="fas fa-up-right-and-down-left-from-center" aria-hidden="true"></i> ${menuLabel}</button>
+                        ${downloadAction}
+                        <button class="danger" type="button" data-action="proof-delete" data-id="${item.id}"><i class="fas fa-trash" aria-hidden="true"></i> Удалить</button>
                     </div>
+                </details>
+            </div>
+        `;
+
+        if (item.type === 'photo') {
+            return `
+                <article class="proof-card proof-photo-card">
+                    ${header}
+                    <button class="proof-thumb" type="button" data-action="proof-preview" data-id="${item.id}" aria-label="Открыть фото">
+                        <img loading="lazy" data-proof-media="${item.id}" alt="${title}">
+                    </button>
                     <div class="proof-card-body">
-                        <div class="proof-card-title">
-                            <strong><i class="fas fa-wave-square" aria-hidden="true"></i> ${this.escape(item.habit_title)}</strong>
-                            <span class="proof-type-badge">${label}</span>
-                        </div>
+                        <strong><i class="fas ${icon}" aria-hidden="true"></i> ${title}</strong>
                         <div class="proof-card-meta">
                             <span><i class="fas fa-calendar-day" aria-hidden="true"></i>${date}</span>
-                            <small>${this.escape(item.file_name || 'Аудио подтверждение')}</small>
-                        </div>
-                        <div class="proof-audio-shell">
-                            <audio controls preload="none" data-proof-media="${item.id}"></audio>
+                            <small>${fileLabel}</small>
                         </div>
                     </div>
                 </article>
             `;
-        }).join('');
-        this.loadProofMedia();
+        }
+
+        if (item.type === 'note') {
+            return `
+                <article class="proof-card proof-note-card">
+                    ${header}
+                    <button class="proof-note-preview" type="button" data-action="proof-preview" data-id="${item.id}" aria-label="Открыть заметку">
+                        <i class="fas ${icon}" aria-hidden="true"></i>
+                        <span>${this.escape(item.text_note || 'Заметка без текста')}</span>
+                    </button>
+                    <div class="proof-card-body">
+                        <strong>${title}</strong>
+                        <div class="proof-card-meta">
+                            <span><i class="fas fa-calendar-day" aria-hidden="true"></i>${date}</span>
+                            <small>Текстовая заметка</small>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }
+
+        return `
+            <article class="proof-card proof-audio-card">
+                ${header}
+                <div class="proof-card-body">
+                    <strong><i class="fas ${icon}" aria-hidden="true"></i> ${title}</strong>
+                    <div class="proof-card-meta">
+                        <span><i class="fas fa-calendar-day" aria-hidden="true"></i>${date}</span>
+                        <small>${fileLabel}</small>
+                        <small id="proofDuration-${item.id}" class="proof-duration">${durationText || 'Длительность: загрузка'}</small>
+                    </div>
+                    <div class="proof-audio-shell">
+                        <audio controls preload="metadata" data-proof-media="${item.id}" data-proof-duration="${item.id}"></audio>
+                    </div>
+                </div>
+            </article>
+        `;
+    }
+
+    renderProofLibraryStats() {
+        const stats = document.getElementById('proofLibraryStats');
+        if (!stats) return;
+        const items = this.proofLibrary?.items || [];
+        const count = (type) => items.filter((item) => item.type === type).length;
+        const cards = [
+            ['Всего', items.length, 'fa-layer-group'],
+            ['Фото', count('photo'), 'fa-image'],
+            ['Аудио', count('audio'), 'fa-wave-square'],
+            ['Заметки', count('note'), 'fa-note-sticky'],
+        ];
+        stats.innerHTML = cards.map(([label, value, icon]) => `
+            <article class="library-stat-card">
+                <i class="fas ${icon}" aria-hidden="true"></i>
+                <div>
+                    <strong>${value}</strong>
+                    <span>${label}</span>
+                </div>
+            </article>
+        `).join('');
+    }
+
+    filteredProofItems(items) {
+        const query = (document.getElementById('proofSearch')?.value || '').trim().toLowerCase();
+        if (!query) return items;
+        return items.filter((item) => {
+            const haystack = [
+                item.habit_title,
+                item.file_name,
+                item.text_note,
+                this.libraryProofTypeLabel(item.type),
+            ].join(' ').toLowerCase();
+            return haystack.includes(query);
+        });
+    }
+
+    groupProofItemsByDate(items) {
+        const buckets = [
+            { key: 'today', label: 'Сегодня', items: [] },
+            { key: 'yesterday', label: 'Вчера', items: [] },
+            { key: 'week', label: 'Эта неделя', items: [] },
+            { key: 'earlier', label: 'Ранее', items: [] },
+        ];
+        const now = new Date();
+        const today = this.startOfLocalDay(now);
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const weekStart = new Date(today);
+        const day = weekStart.getDay() || 7;
+        weekStart.setDate(weekStart.getDate() - day + 1);
+
+        items.forEach((item) => {
+            const date = this.startOfLocalDay(new Date(item.completion_date));
+            if (Number.isNaN(date.getTime())) {
+                buckets[3].items.push(item);
+            } else if (date.getTime() === today.getTime()) {
+                buckets[0].items.push(item);
+            } else if (date.getTime() === yesterday.getTime()) {
+                buckets[1].items.push(item);
+            } else if (date >= weekStart) {
+                buckets[2].items.push(item);
+            } else {
+                buckets[3].items.push(item);
+            }
+        });
+        return buckets.filter((bucket) => bucket.items.length);
+    }
+
+    startOfLocalDay(date) {
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    defaultProofFileLabel(type) {
+        return {
+            photo: 'Фото подтверждение',
+            audio: 'Аудио подтверждение',
+            note: 'Текстовая заметка',
+        }[type] || 'Подтверждение';
     }
 
     syncProofDateReset() {
@@ -1750,12 +1895,30 @@ class ProductivityDashboard {
         this.loadProofLibrary();
     }
 
-    libraryEmptyState() {
+    libraryEmptyState(hasBaseItems = false) {
+        const query = (document.getElementById('proofSearch')?.value || '').trim();
+        const filterLabel = this.libraryProofTypeLabel(this.proofFilter);
+        const hasDates = Boolean(document.getElementById('proofDateFrom')?.value || document.getElementById('proofDateTo')?.value);
+        let title = 'Пока нет подтверждений';
+        let text = 'Добавьте привычку с заметкой, фото или аудио, и она появится здесь.';
+        if (query) {
+            title = 'Ничего не найдено';
+            text = `По запросу "${this.escape(query)}" нет совпадений в названиях привычек, файлах и заметках.`;
+        } else if (hasBaseItems) {
+            title = `Нет элементов в фильтре "${filterLabel}"`;
+            text = 'Попробуйте другой тип подтверждения или измените даты.';
+        } else if (this.proofFilter !== 'all') {
+            title = `${filterLabel} пока нет`;
+            text = 'Когда появятся подтверждения этого типа, они будут показаны здесь.';
+        } else if (hasDates) {
+            title = 'За выбранные даты пусто';
+            text = 'Измените период или сбросьте фильтр дат.';
+        }
         return `
             <div class="empty-state library-empty-state">
                 <i class="fas fa-images" aria-hidden="true"></i>
-                <h3>Пока нет подтверждений</h3>
-                <p>Добавьте привычку с фото или аудио, и она появится здесь.</p>
+                <h3>${title}</h3>
+                <p>${text}</p>
                 <button class="btn btn-primary" type="button" data-page-jump="habits">
                     <i class="fas fa-repeat" aria-hidden="true"></i>
                     Перейти к привычкам
@@ -1789,12 +1952,14 @@ class ProductivityDashboard {
     async loadProofMedia() {
         const items = this.proofLibrary?.items || [];
         await Promise.all(items.map(async (item) => {
+            if (item.type === 'note') return;
             const elements = document.querySelectorAll(`[data-proof-media="${item.id}"]`);
             if (!elements.length) return;
             try {
                 const url = await this.fetchProofMedia(item);
                 elements.forEach((element) => {
                     element.src = url;
+                    if (element.tagName === 'AUDIO') element.load();
                 });
             } catch (error) {
                 elements.forEach((element) => {
@@ -1822,15 +1987,48 @@ class ProductivityDashboard {
             frame.innerHTML = '<div class="skeleton-row"></div>';
             this.openModal('proofPreviewModal');
             try {
-                const mediaURL = await this.fetchProofMedia(item);
-                if (item.type === 'photo') {
-                    frame.innerHTML = `<img src="${mediaURL}" alt="${this.escape(item.habit_title)}">`;
+                if (item.type === 'note') {
+                    frame.innerHTML = `<article class="proof-note-modal"><p>${this.escape(item.text_note || 'Заметка без текста')}</p></article>`;
                 } else {
-                    frame.innerHTML = `<audio controls autoplay src="${mediaURL}"></audio>`;
+                    const mediaURL = await this.fetchProofMedia(item);
+                    if (item.type === 'photo') {
+                        frame.innerHTML = `<img src="${mediaURL}" alt="${this.escape(item.habit_title)}">`;
+                    } else {
+                        frame.innerHTML = `<audio controls autoplay src="${mediaURL}"></audio>`;
+                    }
                 }
             } catch (error) {
                 frame.innerHTML = '<div class="proof-media-error">Не удалось загрузить файл</div>';
             }
+        }
+    }
+
+    async downloadProof(id) {
+        const item = (this.proofLibrary?.items || []).find((proof) => String(proof.id) === String(id));
+        if (!item) return;
+        try {
+            let url;
+            let filename = this.safeDownloadName(item.file_name || `${item.habit_title}-${item.type}`);
+            if (item.type === 'note') {
+                const blob = new Blob([item.text_note || ''], { type: 'text/plain;charset=utf-8' });
+                url = URL.createObjectURL(blob);
+                filename = `${filename || 'proof-note'}.txt`;
+            } else {
+                url = await this.fetchProofMedia(item);
+                filename = filename || `proof-${item.id}`;
+            }
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.rel = 'noopener';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            if (item.type === 'note') {
+                window.setTimeout(() => URL.revokeObjectURL(url), 0);
+            }
+        } catch (error) {
+            this.toast('Не удалось скачать подтверждение', 'error');
         }
     }
 
@@ -2078,6 +2276,7 @@ class ProductivityDashboard {
             'admin-sessions': () => this.loadAdminSessions(id),
             'admin-delete': () => this.deleteAdminUser(id, button.dataset.name, button.dataset.email),
             'proof-preview': () => this.openProofPreview(id),
+            'proof-download': () => this.downloadProof(id),
             'proof-delete': () => this.deleteProof(id),
         };
 
@@ -2356,6 +2555,14 @@ class ProductivityDashboard {
         return /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#4f46e5';
     }
 
+    safeDownloadName(value) {
+        return String(value || '')
+            .trim()
+            .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+            .replace(/\s+/g, ' ')
+            .slice(0, 120);
+    }
+
     habitRequiresProof(habit) {
         return habit?.proof_type && habit.proof_type !== 'none';
     }
@@ -2372,9 +2579,19 @@ class ProductivityDashboard {
 
     libraryProofTypeLabel(type) {
         return {
+            all: 'Все',
             photo: 'Фото',
             audio: 'Аудио',
+            note: 'Заметки',
         }[type] || 'Файл';
+    }
+
+    formatDuration(seconds) {
+        if (!Number.isFinite(seconds) || seconds <= 0) return '';
+        const rounded = Math.round(seconds);
+        const minutes = Math.floor(rounded / 60);
+        const rest = String(rounded % 60).padStart(2, '0');
+        return `Длительность: ${minutes}:${rest}`;
     }
 
     formatDate(value) {

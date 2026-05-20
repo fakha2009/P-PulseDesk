@@ -6,6 +6,9 @@
     <title>PulseDesk - productivity dashboard</title>
     <meta name="description" content="Личный productivity dashboard для задач, привычек и режима сна.">
     <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="PulseDesk">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <script>
         if (window.location.protocol !== 'file:' && !localStorage.getItem('token')) {
             window.location.replace('/auth');
@@ -22,6 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
     <link rel="manifest" href="manifest.webmanifest">
 </head>
 <body class="app-booting">
@@ -565,6 +569,16 @@
                                 Показать обучение
                             </button>
                         </div>
+                        <div class="onboarding-replay-card pwa-profile-card">
+                            <span class="soft-icon"><i class="fas fa-mobile-screen-button" aria-hidden="true"></i></span>
+                            <div>
+                                <strong>PulseDesk на телефоне</strong>
+                                <p id="profilePwaInstallStatus">Добавьте приложение на главный экран для быстрого запуска.</p>
+                            </div>
+                            <button class="btn btn-secondary" type="button" id="profileInstallPwaButton">
+                                Установить
+                            </button>
+                        </div>
                     </section>
                 </div>
             </section>
@@ -941,6 +955,22 @@
             </div>
         </section>
     </div>
+
+    <aside class="pwa-install-prompt" id="pwaInstallPrompt" aria-live="polite" aria-hidden="true">
+        <div class="pwa-install-icon" aria-hidden="true">
+            <i class="fas fa-mobile-screen-button"></i>
+        </div>
+        <div class="pwa-install-copy">
+            <strong>Установите PulseDesk на телефон</strong>
+            <p id="pwaInstallText">Добавьте приложение на главный экран, чтобы открывать его как обычное приложение.</p>
+        </div>
+        <div class="pwa-install-actions">
+            <button class="btn btn-primary" type="button" id="pwaInstallButton">Установить</button>
+            <button class="icon-button" type="button" id="pwaInstallDismiss" aria-label="Закрыть уведомление">
+                <i class="fas fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+    </aside>
 
     <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
 

@@ -2283,6 +2283,10 @@ a i {
     gap: 14px;
 }
 
+.pwa-profile-card {
+    margin-top: 12px;
+}
+
 .soft-icon {
     width: 44px;
     height: 44px;
@@ -2837,6 +2841,77 @@ a i {
     color: var(--muted);
 }
 
+.pwa-install-prompt {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 190;
+    width: min(430px, calc(100vw - 36px));
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--surface), transparent 4%);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(12px);
+    transition: opacity var(--ease), transform var(--ease);
+}
+
+.pwa-install-prompt.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.pwa-install-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--radius-button);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-strong);
+    background: color-mix(in srgb, var(--primary), transparent 86%);
+    font-size: 1.15rem;
+}
+
+.pwa-install-copy {
+    min-width: 0;
+}
+
+.pwa-install-copy strong {
+    display: block;
+    line-height: 1.2;
+}
+
+.pwa-install-copy p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.pwa-install-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pwa-install-actions .btn {
+    min-height: 40px;
+    padding-inline: 14px;
+}
+
+.pwa-install-actions .icon-button {
+    width: 40px;
+    height: 40px;
+}
+
 .toast-stack {
     position: fixed;
     top: 18px;
@@ -3378,6 +3453,30 @@ a i {
         box-shadow: var(--shadow);
         backdrop-filter: blur(18px);
         transform: translateZ(0);
+    }
+
+    .pwa-install-prompt {
+        left: 12px;
+        right: 12px;
+        bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 18px);
+        width: auto;
+        grid-template-columns: 42px minmax(0, 1fr);
+    }
+
+    .pwa-install-icon {
+        width: 42px;
+        height: 42px;
+    }
+
+    .pwa-install-actions {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 42px;
+        width: 100%;
+    }
+
+    .pwa-install-actions .btn {
+        width: 100%;
     }
 
     .has-admin .bottom-nav {

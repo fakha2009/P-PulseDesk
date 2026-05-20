@@ -49,6 +49,7 @@ The application includes:
 | 😴 Sleep Studio | Sleep hero dashboard, Sleep Score, goal tracking, quality chips, recommendations, and sleep journal |
 | 🔐 Authentication | Register, login, JWT sessions, password hashing, profile update, password change |
 | 🧭 Onboarding | New users get a guided product tour with tasks, habits, proof, and sleep basics |
+| 📱 Installable PWA | Mobile install prompt, profile install action, iOS metadata, app icons, and service-worker app shell |
 | 🛡️ Admin Panel | Protected stats, user table, role management, account status, and user sessions |
 | 🗄️ Database | Supabase PostgreSQL using `database/sql` with the `pgx` driver |
 | ☁️ Deployment | Static frontend plus Go serverless API on Vercel |
@@ -69,6 +70,7 @@ The application includes:
 | 🧲 Drag-and-drop ordering | Persisted task ordering through backend reorder API |
 | ⏱️ Focus workflow | Pomodoro timer and browser/PWA reminders |
 | 🧭 Guided onboarding | Backend-backed onboarding state with replay from profile settings |
+| 📱 Installable PWA | Delayed install prompt, manual profile install action, iOS home-screen support, and standalone launch path |
 | 🖼️ Proof library | Private media gallery for habit proof files with ownership checks |
 | 💻 Session tracking | Login device, browser, OS, IP, and last-active data for admins |
 | 🔁 Idempotent seed | Migrations and seed can run repeatedly without duplicate demo users |
@@ -162,6 +164,26 @@ PulseDesk includes lightweight focus tooling directly in the task workflow.
 | PWA-friendly | Works as a browser/PWA reminder layer without exposing secrets |
 
 > Full server-originated Web Push while every tab is closed requires a dedicated VAPID/subscription sender. PulseDesk already includes the service worker foundation for the client side.
+
+---
+
+### 📱 Installable PWA
+
+PulseDesk can be installed on a phone home screen and opened like a standalone app.
+
+| Feature | Description |
+|---|---|
+| Delayed install prompt | Shows a soft install notification after the app has loaded instead of interrupting first paint |
+| Native browser install | Uses `beforeinstallprompt` when Chrome/Android exposes the install flow |
+| iOS home-screen support | Adds Apple web app metadata and `apple-touch-icon` for Safari installs |
+| Profile install action | Profile settings include a manual install/help button for users who dismissed the prompt |
+| Install snooze | Dismissed install prompts stay quiet for 7 days |
+| Installed-state handling | Hides install prompts after `appinstalled` or standalone launch detection |
+| PWA icons | Ships dedicated `192x192`, `512x512`, and Apple touch icons generated from the PulseDesk logo |
+| App shell cache | Service worker caches the core app shell and routes navigation fallback to `app.html` |
+| Update notice | Existing app sessions get a toast when a new service worker version is available |
+
+The manifest starts at `/app`, so a home-screen launch opens the dashboard when the user is already signed in and falls back to the auth flow when needed.
 
 ---
 
@@ -539,6 +561,9 @@ This repository supports single-project Vercel deployment:
 | API | `api/index.go` |
 | Routing | `vercel.json` |
 | Build script | root `package.json` |
+| PWA manifest | `web/manifest.webmanifest` |
+| Service worker | `web/sw.js` |
+| App icons | `web/assets/pwa-192.png`, `web/assets/pwa-512.png`, `web/assets/apple-touch-icon.png` |
 
 Required Vercel production environment:
 
@@ -638,6 +663,9 @@ Smoke checks used during deployment:
 | Toggle checklist item | OK |
 | Drag-and-drop reorder API | OK |
 | Calendar/app service worker files | OK |
+| PWA manifest JSON | OK |
+| PWA install controls | OK |
+| PWA icon sizes | 192x192, 512x512, 180x180 |
 | Regular user admin access | `403 Forbidden` |
 | Admin login | OK |
 | Admin stats | OK |

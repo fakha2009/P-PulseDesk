@@ -33,6 +33,8 @@ class ProductivityDashboard {
         this.searchTimer = null;
         this.clockTimer = null;
         this.notificationTimer = null;
+        this.installPromptTimer = null;
+        this.deferredInstallPrompt = null;
         this.pomodoroTimer = null;
         this.pomodoroRemaining = 0;
         this.pomodoroTaskID = null;
@@ -67,6 +69,7 @@ class ProductivityDashboard {
             document.body.classList.add('app-ready');
             await this.loadAll();
             this.maybeOpenOnboarding();
+            this.scheduleInstallPrompt();
         } catch (error) {
             this.redirectToAuth();
         }
@@ -108,6 +111,9 @@ class ProductivityDashboard {
         document.getElementById('sidebarLogout')?.addEventListener('click', () => this.logout());
         document.getElementById('profileLogout')?.addEventListener('click', () => this.logout());
         document.getElementById('replayOnboardingButton')?.addEventListener('click', () => this.openOnboarding(true));
+        document.getElementById('pwaInstallButton')?.addEventListener('click', () => this.installPwa());
+        document.getElementById('pwaInstallDismiss')?.addEventListener('click', () => this.dismissInstallPrompt());
+        document.getElementById('profileInstallPwaButton')?.addEventListener('click', () => this.installPwa({ manual: true }));
 
         document.getElementById('onboardingNext')?.addEventListener('click', () => this.nextOnboardingStep());
         document.getElementById('onboardingBack')?.addEventListener('click', () => this.previousOnboardingStep());
@@ -263,6 +269,21 @@ class ProductivityDashboard {
         window.addEventListener('popstate', () => {
             this.showPage(this.pageFromPath(window.location.pathname), { history: false });
         });
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            this.deferredInstallPrompt = event;
+            this.updateInstallControls();
+            this.scheduleInstallPrompt();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            localStorage.setItem('pwa_install_state', 'installed');
+            this.deferredInstallPrompt = null;
+            this.hideInstallPrompt();
+            this.updateInstallControls();
+            this.toast('PulseDesk установлен на телефон', 'success');
+        });
     }
 
     openSidebar() {
@@ -328,12 +349,163 @@ class ProductivityDashboard {
         if (!('serviceWorker' in navigator) || window.location.protocol === 'file:') {
             return;
         }
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.register('/sw.js').then((registration) => {
+            registration.addEventListener('updatefound', () => {
+                const worker = registration.installing;
+                worker?.addEventListener('statechange', () => {
+                    if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                        this.toast('Доступна новая версия PulseDesk. Обновите страницу, когда будет удобно.', 'info');
+                    }
+                });
+            });
+        }).catch(() => {});
         navigator.serviceWorker.addEventListener('message', (event) => {
             if (event.data?.type === 'navigate' && event.data.page) {
                 this.showPage(event.data.page);
             }
         });
+    }
+
+    scheduleInstallPrompt(delay = 30000) {
+        if (this.installPromptTimer) {
+            clearTimeout(this.installPromptTimer);
+        }
+        if (!this.canShowInstallPrompt()) {
+            return;
+        }
+        this.installPromptTimer = window.setTimeout(() => this.showInstallPrompt(), delay);
+        this.updateInstallControls();
+    }
+
+    canShowInstallPrompt() {
+        if (window.location.protocol === 'file:' || this.isPwaInstalled()) {
+            return false;
+        }
+        if (localStorage.getItem('pwa_install_state') === 'installed') {
+            return false;
+        }
+        const dismissedAt = Number(localStorage.getItem('pwa_install_dismissed_at') || 0);
+        const snoozeMs = 7 * 24 * 60 * 60 * 1000;
+        if (dismissedAt && Date.now() - dismissedAt < snoozeMs) {
+            return false;
+        }
+        return Boolean(this.deferredInstallPrompt || this.isMobileInstallCandidate());
+    }
+
+    isPwaInstalled() {
+        return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    isMobileInstallCandidate() {
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+
+    isIosDevice() {
+        return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+
+    showInstallPrompt() {
+        if (!this.canShowInstallPrompt()) {
+            return;
+        }
+        if (document.getElementById('onboardingLayer')?.classList.contains('active')) {
+            this.scheduleInstallPrompt(10000);
+            return;
+        }
+
+        const prompt = document.getElementById('pwaInstallPrompt');
+        const text = document.getElementById('pwaInstallText');
+        const button = document.getElementById('pwaInstallButton');
+        if (!prompt) return;
+
+        if (text) {
+            text.textContent = this.deferredInstallPrompt
+                ? 'Добавьте приложение на главный экран, чтобы открывать его без браузера.'
+                : this.installManualHint();
+        }
+        if (button) {
+            button.textContent = this.deferredInstallPrompt ? 'Установить' : 'Как добавить';
+        }
+        prompt.classList.add('active');
+        prompt.setAttribute('aria-hidden', 'false');
+        this.updateInstallControls();
+    }
+
+    hideInstallPrompt() {
+        const prompt = document.getElementById('pwaInstallPrompt');
+        prompt?.classList.remove('active');
+        prompt?.setAttribute('aria-hidden', 'true');
+        this.updateInstallControls();
+    }
+
+    dismissInstallPrompt() {
+        localStorage.setItem('pwa_install_dismissed_at', String(Date.now()));
+        this.hideInstallPrompt();
+    }
+
+    installManualHint() {
+        if (this.isIosDevice()) {
+            return 'Нажмите «Поделиться» в Safari, затем «На экран Домой».';
+        }
+        return 'Откройте меню браузера и выберите «Установить приложение» или «Добавить на главный экран».';
+    }
+
+    updateInstallControls() {
+        const button = document.getElementById('profileInstallPwaButton');
+        const status = document.getElementById('profilePwaInstallStatus');
+        if (!button && !status) return;
+
+        const installed = this.isPwaInstalled() || localStorage.getItem('pwa_install_state') === 'installed';
+        if (installed) {
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Установлено';
+            }
+            if (status) status.textContent = 'Приложение уже открывается с домашнего экрана.';
+            return;
+        }
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = this.deferredInstallPrompt ? 'Установить' : 'Как добавить';
+        }
+        if (status) {
+            status.textContent = this.deferredInstallPrompt
+                ? 'Можно установить PulseDesk как отдельное приложение.'
+                : this.installManualHint();
+        }
+    }
+
+    async installPwa(options = {}) {
+        if (this.isPwaInstalled()) {
+            localStorage.setItem('pwa_install_state', 'installed');
+            this.updateInstallControls();
+            this.toast('PulseDesk уже установлен', 'info');
+            return;
+        }
+        if (!this.deferredInstallPrompt) {
+            this.toast(this.installManualHint(), 'info');
+            this.updateInstallControls();
+            return;
+        }
+
+        const promptEvent = this.deferredInstallPrompt;
+        this.deferredInstallPrompt = null;
+        promptEvent.prompt();
+
+        try {
+            const choice = await promptEvent.userChoice;
+            if (choice?.outcome === 'accepted') {
+                localStorage.setItem('pwa_install_state', 'installed');
+            } else {
+                localStorage.setItem('pwa_install_dismissed_at', String(Date.now()));
+            }
+        } catch (error) {
+            localStorage.setItem('pwa_install_dismissed_at', String(Date.now()));
+        } finally {
+            this.hideInstallPrompt();
+            this.updateInstallControls();
+        }
     }
 
     async ensureNotificationPermission() {
@@ -2285,6 +2457,7 @@ class ProductivityDashboard {
             item.classList.toggle('hidden', this.currentUser.role !== 'admin');
         });
         document.body.classList.toggle('has-admin', this.currentUser.role === 'admin');
+        this.updateInstallControls();
     }
 
     handleActionClick(event) {

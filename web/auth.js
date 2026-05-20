@@ -111,6 +111,7 @@ class AuthManager {
         try {
             const result = await this.apiFetch(url, {
                 method: 'POST',
+                skipAuthRedirect: true,
                 body: JSON.stringify(payload),
             });
 
@@ -182,11 +183,37 @@ class AuthManager {
     }
 
     toast(message, type = 'info') {
-        window.PulseDeskUI.toast(message, type);
+        if (window.PulseDeskUI?.toast) {
+            window.PulseDeskUI.toast(message, type);
+            return;
+        }
+
+        const stack = document.getElementById('toastStack');
+        if (!stack) {
+            console[type === 'error' ? 'error' : 'info'](message);
+            return;
+        }
+
+        const toastNode = document.createElement('div');
+        toastNode.className = `toast toast-${type}`;
+        toastNode.innerHTML = `
+            <i class="fas ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info'}" aria-hidden="true"></i>
+            <span>${this.escape(message)}</span>
+            <button type="button" aria-label="Close"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+        `;
+        toastNode.querySelector('button')?.addEventListener('click', () => toastNode.remove());
+        stack.appendChild(toastNode);
+        window.setTimeout(() => toastNode.classList.add('show'), 20);
+        window.setTimeout(() => {
+            toastNode.classList.remove('show');
+            window.setTimeout(() => toastNode.remove(), 250);
+        }, 4500);
     }
 
     escape(value) {
-        return window.PulseDeskUI.escapeHTML(value);
+        if (window.PulseDeskUI?.escapeHTML) {
+            return window.PulseDeskUI.escapeHTML(value);
+        }
         return String(value ?? '').replace(/[&<>"']/g, (char) => ({
             '&': '&amp;',
             '<': '&lt;',

@@ -1,4 +1,4 @@
-const APP_CACHE = 'pulsedesk-app-v2';
+const APP_CACHE = 'pulsedesk-app-v3';
 const APP_SHELL = [
     '/',
     '/app',
@@ -12,6 +12,7 @@ const APP_SHELL = [
     '/api-config.js',
     '/lib/api-client.js',
     '/ui/helpers.js',
+    '/ui/task-datetime.js',
     '/manifest.webmanifest',
     '/favicon.svg',
     '/assets/logo.png',

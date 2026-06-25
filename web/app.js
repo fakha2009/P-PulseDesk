@@ -40,6 +40,7 @@ class ProductivityDashboard {
         this.notificationTimer = null;
         this.installPromptTimer = null;
         this.deferredInstallPrompt = null;
+        this.installPromptInProgress = false;
         this.pomodoroTimer = null;
         this.pomodoroRemaining = 0;
         this.pomodoroTaskID = null;
@@ -51,6 +52,7 @@ class ProductivityDashboard {
 
     async init() {
         this.applyPreferences(this.loadLocalPreferences(), false);
+        this.resetLegacyInstallState();
 
         if (!localStorage.getItem('token')) {
             this.redirectToAuth();
@@ -391,11 +393,13 @@ class ProductivityDashboard {
         if (window.location.protocol === 'file:' || this.isPwaInstalled()) {
             return false;
         }
-        const dismissedAt = Number(sessionStorage.getItem('pwa_install_dismissed_at') || 0);
-        if (!options.force && dismissedAt) {
-            return false;
-        }
         return Boolean(this.deferredInstallPrompt || this.isMobileInstallCandidate() || options.force);
+    }
+
+    resetLegacyInstallState() {
+        localStorage.removeItem('pwa_install_state');
+        localStorage.removeItem('pwa_install_dismissed_at');
+        sessionStorage.removeItem('pwa_install_dismissed_at');
     }
 
     isPwaInstalled() {
@@ -445,7 +449,6 @@ class ProductivityDashboard {
     }
 
     dismissInstallPrompt() {
-        sessionStorage.setItem('pwa_install_dismissed_at', String(Date.now()));
         this.hideInstallPrompt();
     }
 
@@ -472,8 +475,8 @@ class ProductivityDashboard {
         }
 
         if (button) {
-            button.disabled = false;
-            button.textContent = this.deferredInstallPrompt ? 'Установить' : 'Как добавить';
+            button.disabled = this.installPromptInProgress;
+            button.textContent = this.installPromptInProgress ? 'Открываем...' : this.deferredInstallPrompt ? 'Установить' : 'Как добавить';
         }
         if (status) {
             status.textContent = this.deferredInstallPrompt
@@ -483,13 +486,13 @@ class ProductivityDashboard {
     }
 
     async installPwa(options = {}) {
+        if (this.installPromptInProgress) return;
         if (this.isPwaInstalled()) {
             this.updateInstallControls();
             this.toast('PulseDesk уже установлен', 'info');
             return;
         }
         if (!this.deferredInstallPrompt) {
-            sessionStorage.removeItem('pwa_install_dismissed_at');
             this.showInstallPrompt({ force: true });
             this.toast(this.installManualHint(), 'info');
             this.updateInstallControls();
@@ -497,19 +500,32 @@ class ProductivityDashboard {
         }
 
         const promptEvent = this.deferredInstallPrompt;
-        this.deferredInstallPrompt = null;
-        promptEvent.prompt();
+        const promptButton = document.getElementById('pwaInstallButton');
+        this.installPromptInProgress = true;
+        if (promptButton) {
+            promptButton.disabled = true;
+            promptButton.textContent = 'Открываем...';
+        }
+        this.updateInstallControls();
 
         try {
+            await promptEvent.prompt();
             const choice = await promptEvent.userChoice;
+            this.deferredInstallPrompt = null;
             if (choice?.outcome === 'accepted') {
                 localStorage.setItem('pwa_install_last_success_at', String(Date.now()));
             } else {
                 localStorage.setItem('pwa_install_last_attempt_at', String(Date.now()));
             }
         } catch (error) {
+            this.deferredInstallPrompt = null;
             localStorage.setItem('pwa_install_last_attempt_at', String(Date.now()));
+            this.toast(this.installManualHint(), 'info');
         } finally {
+            this.installPromptInProgress = false;
+            if (promptButton) {
+                promptButton.disabled = false;
+            }
             this.hideInstallPrompt();
             this.updateInstallControls();
         }

@@ -3175,9 +3175,24 @@ a i {
     white-space: nowrap;
 }
 
-.pwa-install-actions .icon-button {
-    width: 40px;
-    height: 40px;
+.pwa-install-dismiss {
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-button);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 800;
+    transition: background var(--ease), color var(--ease), border-color var(--ease), box-shadow var(--ease);
+}
+
+.pwa-install-dismiss:hover,
+.pwa-install-dismiss:focus-visible {
+    background: var(--surface-muted);
+    color: var(--text);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-soft);
 }
 
 .toast-stack {
@@ -3523,10 +3538,6 @@ a i {
         transform: translateX(0);
     }
 
-    .sidebar-head .sidebar-close {
-        display: inline-flex;
-    }
-
     .sidebar-backdrop {
         position: fixed;
         inset: 0;
@@ -3741,7 +3752,7 @@ a i {
     .pwa-install-actions {
         grid-column: 1 / -1;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 42px;
+        grid-template-columns: minmax(0, 1fr) auto;
         width: 100%;
     }
 

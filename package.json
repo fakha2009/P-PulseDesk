@@ -1,6 +1,8 @@
 {
   "scripts": {
     "build": "cd web && npm run build",
+    "test": "npm run test:datetime",
+    "test:datetime": "node web/ui/task-datetime.test.js",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

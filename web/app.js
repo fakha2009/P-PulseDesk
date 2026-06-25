@@ -15,6 +15,11 @@ class ProductivityDashboard {
         this.currentUser = null;
         this.preferences = this.defaultPreferences();
         this.editingTask = null;
+        this.taskDatePicker = {
+            open: false,
+            selectedDate: null,
+            viewDate: new Date(),
+        };
         this.editingHabit = null;
         this.proofHabit = null;
         this.proofType = 'note';
@@ -131,6 +136,7 @@ class ProductivityDashboard {
             event.preventDefault();
             this.saveTask();
         });
+        this.bindTaskDatePicker();
         document.getElementById('addSubtaskButton')?.addEventListener('click', () => this.addSubtaskEditorRow());
         document.querySelectorAll('[data-priority-choice]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -261,6 +267,10 @@ class ProductivityDashboard {
         });
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
+                if (this.closeTaskDatePicker()) {
+                    event.preventDefault();
+                    return;
+                }
                 this.closeSidebar();
                 this.closeModal(false);
             }
@@ -278,7 +288,7 @@ class ProductivityDashboard {
         });
 
         window.addEventListener('appinstalled', () => {
-            localStorage.setItem('pwa_install_state', 'installed');
+            localStorage.setItem('pwa_install_last_success_at', String(Date.now()));
             this.deferredInstallPrompt = null;
             this.hideInstallPrompt();
             this.updateInstallControls();
@@ -377,19 +387,15 @@ class ProductivityDashboard {
         this.updateInstallControls();
     }
 
-    canShowInstallPrompt() {
+    canShowInstallPrompt(options = {}) {
         if (window.location.protocol === 'file:' || this.isPwaInstalled()) {
             return false;
         }
-        if (localStorage.getItem('pwa_install_state') === 'installed') {
+        const dismissedAt = Number(sessionStorage.getItem('pwa_install_dismissed_at') || 0);
+        if (!options.force && dismissedAt) {
             return false;
         }
-        const dismissedAt = Number(localStorage.getItem('pwa_install_dismissed_at') || 0);
-        const snoozeMs = 7 * 24 * 60 * 60 * 1000;
-        if (dismissedAt && Date.now() - dismissedAt < snoozeMs) {
-            return false;
-        }
-        return Boolean(this.deferredInstallPrompt || this.isMobileInstallCandidate());
+        return Boolean(this.deferredInstallPrompt || this.isMobileInstallCandidate() || options.force);
     }
 
     isPwaInstalled() {
@@ -404,8 +410,8 @@ class ProductivityDashboard {
         return /iPhone|iPad|iPod/i.test(navigator.userAgent);
     }
 
-    showInstallPrompt() {
-        if (!this.canShowInstallPrompt()) {
+    showInstallPrompt(options = {}) {
+        if (!this.canShowInstallPrompt(options)) {
             return;
         }
         if (document.getElementById('onboardingLayer')?.classList.contains('active')) {
@@ -439,7 +445,7 @@ class ProductivityDashboard {
     }
 
     dismissInstallPrompt() {
-        localStorage.setItem('pwa_install_dismissed_at', String(Date.now()));
+        sessionStorage.setItem('pwa_install_dismissed_at', String(Date.now()));
         this.hideInstallPrompt();
     }
 
@@ -455,7 +461,7 @@ class ProductivityDashboard {
         const status = document.getElementById('profilePwaInstallStatus');
         if (!button && !status) return;
 
-        const installed = this.isPwaInstalled() || localStorage.getItem('pwa_install_state') === 'installed';
+        const installed = this.isPwaInstalled();
         if (installed) {
             if (button) {
                 button.disabled = true;
@@ -478,12 +484,13 @@ class ProductivityDashboard {
 
     async installPwa(options = {}) {
         if (this.isPwaInstalled()) {
-            localStorage.setItem('pwa_install_state', 'installed');
             this.updateInstallControls();
             this.toast('PulseDesk уже установлен', 'info');
             return;
         }
         if (!this.deferredInstallPrompt) {
+            sessionStorage.removeItem('pwa_install_dismissed_at');
+            this.showInstallPrompt({ force: true });
             this.toast(this.installManualHint(), 'info');
             this.updateInstallControls();
             return;
@@ -496,12 +503,12 @@ class ProductivityDashboard {
         try {
             const choice = await promptEvent.userChoice;
             if (choice?.outcome === 'accepted') {
-                localStorage.setItem('pwa_install_state', 'installed');
+                localStorage.setItem('pwa_install_last_success_at', String(Date.now()));
             } else {
-                localStorage.setItem('pwa_install_dismissed_at', String(Date.now()));
+                localStorage.setItem('pwa_install_last_attempt_at', String(Date.now()));
             }
         } catch (error) {
-            localStorage.setItem('pwa_install_dismissed_at', String(Date.now()));
+            localStorage.setItem('pwa_install_last_attempt_at', String(Date.now()));
         } finally {
             this.hideInstallPrompt();
             this.updateInstallControls();
@@ -908,12 +915,341 @@ class ProductivityDashboard {
         document.getElementById('taskTitle').value = task?.title || '';
         document.getElementById('taskDescription').value = task?.description || '';
         document.getElementById('taskPriority').value = task?.priority || 'medium';
-        document.getElementById('taskDueDate').value = this.taskDateValue(task?.due_date);
+        this.setTaskDueDate(task?.due_date, { defaultIfEmpty: true });
         document.getElementById('taskRecurrence').value = task?.recurrence || 'none';
         this.setFormMessage('taskTitleError', '');
+        this.setTaskDueDateError('');
         this.syncPriorityChoice();
         this.renderSubtaskEditor(task?.subtasks || []);
         this.openModal('taskModal');
+    }
+
+    bindTaskDatePicker() {
+        const input = document.getElementById('taskDueDate');
+        const trigger = document.getElementById('taskDueDateButton');
+        const popover = document.getElementById('taskDatePicker');
+        if (!input || !trigger || !popover) return;
+
+        input.addEventListener('focus', () => this.openTaskDatePicker());
+        input.addEventListener('click', () => this.openTaskDatePicker());
+        input.addEventListener('input', () => {
+            this.taskDatePicker.selectedDate = null;
+            this.setTaskDueDateError('');
+        });
+        input.addEventListener('change', () => this.commitTaskDueInput());
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                this.commitTaskDueInput({ close: true });
+            }
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                this.openTaskDatePicker({ focusCalendar: true });
+            }
+        });
+
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            if (this.taskDatePicker.open) {
+                this.closeTaskDatePicker();
+            } else {
+                this.openTaskDatePicker({ focusCalendar: true });
+            }
+        });
+
+        popover.addEventListener('click', (event) => this.handleTaskDatePickerClick(event));
+        popover.addEventListener('input', (event) => {
+            if (event.target.id === 'taskDueTime') {
+                this.updateTaskDueTime(event.target.value);
+            }
+        });
+        popover.addEventListener('change', (event) => {
+            if (event.target.id === 'taskDueTime') {
+                this.updateTaskDueTime(event.target.value);
+            }
+        });
+        popover.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && event.target.id === 'taskDueTime') {
+                event.preventDefault();
+                this.applyTaskDueDate();
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            const field = document.getElementById('taskDateField');
+            if (this.taskDatePicker.open && field && !field.contains(event.target)) {
+                this.closeTaskDatePicker();
+            }
+        });
+        window.addEventListener('resize', () => this.positionTaskDatePicker());
+        document.addEventListener('scroll', () => this.positionTaskDatePicker(), true);
+    }
+
+    openTaskDatePicker(options = {}) {
+        const input = document.getElementById('taskDueDate');
+        const popover = document.getElementById('taskDatePicker');
+        if (!input || !popover) return;
+
+        if (!input.value.trim()) {
+            this.setTaskDueDate(null, { defaultIfEmpty: true, render: false });
+        } else if (!this.taskDatePicker.selectedDate) {
+            const result = window.PulseDeskDateTime.validateDueDate(input.value, { required: false });
+            if (result.valid && result.date) {
+                this.setTaskDueDate(result.date, { render: false });
+            }
+        }
+
+        this.taskDatePicker.open = true;
+        this.taskDatePicker.viewDate = this.taskDatePicker.selectedDate || this.taskDatePicker.viewDate || new Date();
+        popover.hidden = false;
+        popover.classList.add('active');
+        popover.setAttribute('aria-hidden', 'false');
+        input.setAttribute('aria-expanded', 'true');
+        this.renderTaskDatePicker();
+        window.requestAnimationFrame(() => {
+            this.positionTaskDatePicker();
+            if (options.focusCalendar) {
+                popover.querySelector('.date-picker-day[aria-selected="true"], .date-picker-day:not(:disabled)')?.focus();
+            }
+        });
+    }
+
+    closeTaskDatePicker() {
+        if (!this.taskDatePicker?.open) return false;
+        const input = document.getElementById('taskDueDate');
+        const popover = document.getElementById('taskDatePicker');
+        this.taskDatePicker.open = false;
+        popover?.classList.remove('active');
+        popover?.setAttribute('aria-hidden', 'true');
+        if (popover) popover.hidden = true;
+        input?.setAttribute('aria-expanded', 'false');
+        return true;
+    }
+
+    renderTaskDatePicker() {
+        const popover = document.getElementById('taskDatePicker');
+        if (!popover) return;
+
+        const dateTime = window.PulseDeskDateTime;
+        const now = new Date();
+        const selectedDate = this.taskDatePicker.selectedDate;
+        const viewDate = this.taskDatePicker.viewDate || selectedDate || now;
+        const days = dateTime.calendarDays(viewDate, selectedDate, now);
+        const presets = dateTime.dueDatePresets(now, selectedDate);
+        const selectedTime = dateTime.timeValue(selectedDate || dateTime.defaultDueDate(now));
+        const timeMin = selectedDate && dateTime.isSameDay(selectedDate, now) ? dateTime.timeValue(dateTime.startOfMinute(now)) : '';
+
+        popover.innerHTML = `
+            <div class="date-picker-content">
+                <div class="date-picker-calendar">
+                    <div class="date-picker-nav">
+                        <button class="date-picker-icon" type="button" data-task-date-action="prev-month" aria-label="Предыдущий месяц">
+                            <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                        </button>
+                        <strong id="taskDatePickerMonth">${this.escape(dateTime.monthTitle(viewDate))}</strong>
+                        <button class="date-picker-icon" type="button" data-task-date-action="next-month" aria-label="Следующий месяц">
+                            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div class="date-picker-weekdays" aria-hidden="true">
+                        ${dateTime.WEEKDAY_LABELS.map((label) => `<span>${label}</span>`).join('')}
+                    </div>
+                    <div class="date-picker-days" role="grid" aria-labelledby="taskDatePickerMonth">
+                        ${days.map((day) => `
+                            <button
+                                class="date-picker-day${day.outside ? ' is-outside' : ''}${day.weekend ? ' is-weekend' : ''}${day.today ? ' is-today' : ''}${day.selected ? ' is-selected' : ''}"
+                                type="button"
+                                data-task-date-day="${day.key}"
+                                role="gridcell"
+                                aria-label="${this.escape(day.ariaLabel)}"
+                                aria-selected="${day.selected ? 'true' : 'false'}"
+                                ${day.disabled ? 'disabled' : ''}
+                            >${day.label}</button>
+                        `).join('')}
+                    </div>
+                    <label class="date-picker-time" for="taskDueTime">
+                        <span><i class="fas fa-clock" aria-hidden="true"></i> Время</span>
+                        <input id="taskDueTime" type="time" step="60" value="${selectedTime}" ${timeMin ? `min="${timeMin}"` : ''}>
+                    </label>
+                </div>
+                <div class="date-picker-presets" aria-label="Быстрый выбор срока">
+                    ${presets.map((preset) => `
+                        <button class="date-picker-preset" type="button" data-task-date-preset="${preset.id}">
+                            <strong>${this.escape(preset.title)}</strong>
+                            <span>${this.escape(preset.detail)}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="date-picker-actions">
+                <button class="btn btn-secondary" type="button" data-task-date-action="close">Закрыть</button>
+                <button class="btn btn-primary" type="button" data-task-date-action="apply">Готово</button>
+            </div>
+        `;
+    }
+
+    handleTaskDatePickerClick(event) {
+        const dayButton = event.target.closest('[data-task-date-day]');
+        if (dayButton) {
+            event.preventDefault();
+            this.selectTaskDueDay(dayButton.dataset.taskDateDay);
+            return;
+        }
+
+        const presetButton = event.target.closest('[data-task-date-preset]');
+        if (presetButton) {
+            event.preventDefault();
+            this.selectTaskDuePreset(presetButton.dataset.taskDatePreset);
+            return;
+        }
+
+        const actionButton = event.target.closest('[data-task-date-action]');
+        if (!actionButton) return;
+        event.preventDefault();
+
+        const action = actionButton.dataset.taskDateAction;
+        if (action === 'prev-month') this.shiftTaskDateMonth(-1);
+        if (action === 'next-month') this.shiftTaskDateMonth(1);
+        if (action === 'close') this.closeTaskDatePicker();
+        if (action === 'apply') this.applyTaskDueDate();
+    }
+
+    shiftTaskDateMonth(direction) {
+        const base = this.taskDatePicker.viewDate || this.taskDatePicker.selectedDate || new Date();
+        this.taskDatePicker.viewDate = new Date(base.getFullYear(), base.getMonth() + direction, 1);
+        this.renderTaskDatePicker();
+        window.requestAnimationFrame(() => this.positionTaskDatePicker());
+    }
+
+    selectTaskDueDay(key) {
+        const dateTime = window.PulseDeskDateTime;
+        const day = dateTime.parseDateKey(key);
+        if (!day) return;
+
+        const today = dateTime.startOfDay(new Date());
+        if (dateTime.startOfDay(day).getTime() < today.getTime()) return;
+
+        let dueDate = dateTime.mergeDateAndTime(day, this.taskDatePicker.selectedDate || dateTime.defaultDueDate());
+        if (dateTime.compareByMinute(dueDate, new Date()) < 0 && dateTime.isSameDay(dueDate, new Date())) {
+            dueDate = dateTime.startOfMinute(new Date());
+        }
+
+        this.setTaskDueDate(dueDate, { render: false });
+        this.taskDatePicker.viewDate = dueDate;
+        this.renderTaskDatePicker();
+        this.validateTaskDueDate({ required: true, silent: true });
+        window.requestAnimationFrame(() => {
+            this.positionTaskDatePicker();
+            document.getElementById('taskDueTime')?.focus();
+        });
+    }
+
+    selectTaskDuePreset(id) {
+        const preset = window.PulseDeskDateTime
+            .dueDatePresets(new Date(), this.taskDatePicker.selectedDate)
+            .find((item) => item.id === id);
+        if (!preset) return;
+        this.setTaskDueDate(preset.date, { render: false });
+        this.closeTaskDatePicker();
+    }
+
+    updateTaskDueTime(value) {
+        const dateTime = window.PulseDeskDateTime;
+        const parsedTime = dateTime.parseTimeValue(value);
+        if (!parsedTime) return;
+
+        const base = this.taskDatePicker.selectedDate || dateTime.defaultDueDate();
+        const dueDate = new Date(base.getFullYear(), base.getMonth(), base.getDate(), parsedTime.hours, parsedTime.minutes, 0, 0);
+        this.setTaskDueDate(dueDate, { render: false });
+
+        const validation = this.validateTaskDueDate({ required: true, silent: true });
+        this.setTaskDueDateError(validation.valid ? '' : validation.message);
+    }
+
+    applyTaskDueDate() {
+        const validation = this.validateTaskDueDate({ required: true });
+        if (!validation.valid) return;
+        this.setTaskDueDate(validation.date, { render: false });
+        this.closeTaskDatePicker();
+    }
+
+    commitTaskDueInput(options = {}) {
+        const validation = this.validateTaskDueDate({ required: true, silent: options.silent });
+        if (!validation.valid) {
+            if (options.close) this.openTaskDatePicker();
+            return validation;
+        }
+        this.setTaskDueDate(validation.date, { render: this.taskDatePicker.open });
+        if (options.close) this.closeTaskDatePicker();
+        return validation;
+    }
+
+    validateTaskDueDate(options = {}) {
+        const input = document.getElementById('taskDueDate');
+        const value = this.taskDatePicker.selectedDate || input?.value || '';
+        const validation = window.PulseDeskDateTime.validateDueDate(value, {
+            required: options.required !== false,
+        });
+        if (!options.silent) {
+            this.setTaskDueDateError(validation.valid ? '' : validation.message);
+        }
+        return validation;
+    }
+
+    setTaskDueDate(value, options = {}) {
+        const dateTime = window.PulseDeskDateTime;
+        const input = document.getElementById('taskDueDate');
+        let date = dateTime.normalizeDateTime(value);
+        if (!date && options.defaultIfEmpty) {
+            date = dateTime.defaultDueDate();
+        }
+
+        this.taskDatePicker.selectedDate = date;
+        this.taskDatePicker.viewDate = date || this.taskDatePicker.viewDate || new Date();
+
+        if (input) {
+            input.value = date ? dateTime.formatDisplayDateTime(date) : '';
+            input.dataset.iso = date ? date.toISOString() : '';
+        }
+        this.setTaskDueDateError('');
+
+        if (options.render && this.taskDatePicker.open) {
+            this.renderTaskDatePicker();
+            window.requestAnimationFrame(() => this.positionTaskDatePicker());
+        }
+    }
+
+    setTaskDueDateError(message) {
+        const input = document.getElementById('taskDueDate');
+        this.setFormMessage('taskDueDateError', message, message ? 'error' : '');
+        input?.setAttribute('aria-invalid', message ? 'true' : 'false');
+    }
+
+    positionTaskDatePicker() {
+        if (!this.taskDatePicker?.open) return;
+        const popover = document.getElementById('taskDatePicker');
+        const control = document.querySelector('#taskDateField .date-input-shell');
+        if (!popover || !control || popover.hidden) return;
+
+        if (window.matchMedia('(max-width: 640px)').matches) {
+            popover.style.removeProperty('top');
+            popover.style.removeProperty('left');
+            popover.style.removeProperty('width');
+            return;
+        }
+
+        const rect = control.getBoundingClientRect();
+        const width = Math.min(640, window.innerWidth - 32);
+        const height = popover.offsetHeight || 420;
+        const left = Math.min(Math.max(16, rect.left), window.innerWidth - width - 16);
+        let top = rect.bottom + 8;
+        if (top + height > window.innerHeight - 16) {
+            top = Math.max(16, rect.top - height - 8);
+        }
+
+        popover.style.width = `${width}px`;
+        popover.style.left = `${left}px`;
+        popover.style.top = `${top}px`;
     }
 
     renderSubtaskEditor(subtasks = []) {
@@ -968,12 +1304,12 @@ class ProductivityDashboard {
         }
         this.setFormMessage('taskTitleError', '');
 
-        const dueValue = document.getElementById('taskDueDate').value;
-        const dueDate = dueValue ? new Date(dueValue) : null;
-        if (!this.editingTask && dueDate && dueDate.getTime() < Date.now()) {
-            this.toast('Срок задачи не может быть в прошлом', 'error');
+        const dueValidation = this.validateTaskDueDate({ required: true });
+        if (!dueValidation.valid) {
+            this.toast(dueValidation.message, 'error');
             return;
         }
+        const dueDate = dueValidation.date;
         if (dueDate) {
             await this.ensureNotificationPermission();
         }
@@ -2506,6 +2842,7 @@ class ProductivityDashboard {
 
     closeModal(result = false) {
         const layer = document.getElementById('modalLayer');
+        this.closeTaskDatePicker();
         layer?.classList.remove('active');
         layer?.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('modal-open');
@@ -2667,7 +3004,8 @@ class ProductivityDashboard {
         const element = document.getElementById(id);
         if (!element) return;
         element.textContent = message || '';
-        element.className = `form-message${type ? ` ${type}` : ''}`;
+        const baseClass = element.classList.contains('field-message') ? 'field-message' : 'form-message';
+        element.className = `${baseClass}${type ? ` ${type}` : ''}`;
     }
 
     setLoading(button, loading) {
@@ -2704,14 +3042,11 @@ class ProductivityDashboard {
     setTaskDateBounds(editing = false) {
         const input = document.getElementById('taskDueDate');
         if (!input) return;
-        const now = new Date();
-        now.setSeconds(0, 0);
-        const minValue = this.localDateTimeInputValue(now);
-        input.min = editing ? '' : minValue;
-        if (!editing && !input.value) {
-            const defaultDue = new Date(now);
-            defaultDue.setHours(defaultDue.getHours() + 1);
-            input.value = this.localDateTimeInputValue(defaultDue);
+        input.removeAttribute('min');
+        input.removeAttribute('max');
+        input.removeAttribute('required');
+        if (!input.value) {
+            this.setTaskDueDate(null, { defaultIfEmpty: !editing, render: false });
         }
     }
 
@@ -2786,14 +3121,7 @@ class ProductivityDashboard {
 
     formatDateTime(value) {
         if (!value) return '-';
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return '-';
-        return new Intl.DateTimeFormat('ru-RU', {
-            day: '2-digit',
-            month: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-        }).format(date);
+        return window.PulseDeskDateTime.formatDisplayDateTime(value) || '-';
     }
 
     shortDay(value) {
@@ -2837,12 +3165,7 @@ class ProductivityDashboard {
 
     taskDateValue(value) {
         if (!value) return '';
-        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(value.slice(16))) {
-            return value.slice(0, 16);
-        }
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return '';
-        return this.localDateTimeInputValue(date);
+        return window.PulseDeskDateTime.formatDisplayDateTime(value);
     }
 
     clockShort(value) {

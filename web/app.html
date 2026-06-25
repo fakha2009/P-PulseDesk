@@ -19,6 +19,7 @@
     <script src="api-config.js"></script>
     <script src="lib/api-client.js"></script>
     <script src="ui/helpers.js"></script>
+    <script src="ui/task-datetime.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -778,7 +779,17 @@
                         <div class="form-grid-two">
                             <div>
                                 <label for="taskDueDate">Срок и время</label>
-                                <input id="taskDueDate" type="datetime-local">
+                                <div class="task-date-field" id="taskDateField">
+                                    <div class="date-input-shell">
+                                        <i class="fas fa-calendar-days" aria-hidden="true"></i>
+                                        <input id="taskDueDate" type="text" inputmode="numeric" autocomplete="off" placeholder="ДД.ММ.ГГГГ ЧЧ:ММ" aria-describedby="taskDueDateError" aria-haspopup="dialog" aria-controls="taskDatePicker" aria-expanded="false">
+                                        <button class="date-picker-trigger" type="button" id="taskDueDateButton" aria-label="Открыть календарь" aria-controls="taskDatePicker">
+                                            <i class="fas fa-calendar-day" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                    <div class="date-picker-popover" id="taskDatePicker" role="dialog" aria-label="Выбор срока задачи" aria-hidden="true" hidden></div>
+                                    <span class="field-message" id="taskDueDateError" role="status" aria-live="polite"></span>
+                                </div>
                             </div>
                             <div>
                                 <label for="taskRecurrence">Повторение</label>
